@@ -375,13 +375,15 @@ export function Modal({
   const { t } = useTranslation();
   const titleId = useId();
   const dialogRef = useRef<HTMLDivElement>(null);
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
 
   useEffect(() => {
     if (!open) return;
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
         event.stopPropagation();
-        onClose();
+        onCloseRef.current();
       }
       if (event.key === 'Tab' && dialogRef.current) {
         const focusable = dialogRef.current.querySelectorAll<HTMLElement>(
@@ -403,9 +405,11 @@ export function Modal({
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
     const timer = window.setTimeout(() => {
-      const target = dialogRef.current?.querySelector<HTMLElement>(
-        '[data-autofocus], input, textarea, button',
-      );
+      const dialog = dialogRef.current;
+      const target =
+        dialog?.querySelector<HTMLElement>('[data-autofocus]') ??
+        dialog?.querySelector<HTMLElement>('input, textarea, select') ??
+        dialog?.querySelector<HTMLElement>('button');
       target?.focus();
     }, 30);
     return () => {
@@ -413,7 +417,7 @@ export function Modal({
       document.body.style.overflow = previousOverflow;
       window.clearTimeout(timer);
     };
-  }, [open, onClose]);
+  }, [open]);
 
   if (!open) return null;
   return createPortal(
