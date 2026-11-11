@@ -51,20 +51,13 @@ import {
   useToast,
 } from '../../components/ui';
 import { useWorkspace } from '../../components/workspace-context';
-import {
-  ApiError,
-  del,
-  downloadWithAuth,
-  get,
-  OfflineQueuedError,
-  patch,
-  post,
-} from '../../lib/api';
+import { ApiError, del, get, OfflineQueuedError, patch, post } from '../../lib/api';
 import type { BoardShareLinkRow, BoardSnapshotResponse } from '../../lib/api-types';
 import { useAuthStore } from '../../lib/auth-store';
 import { useBoard, useMembers, useSavedViews } from '../../lib/queries';
 import { useBoardRealtime } from '../../lib/realtime';
 import { cn, formatDue, LIST_COLORS, PRIORITY_COLORS } from '../../lib/utils';
+import { BoardActionsMenu } from './BoardActionsMenu';
 import { CardModal } from './CardModal';
 import { CardTile } from './CardTile';
 import { LabelManager } from './LabelManager';
@@ -95,7 +88,6 @@ export function BoardPage() {
   const membersQuery = useMembers(workspace?.id);
   const viewsQuery = useSavedViews(workspace?.id);
   const currentUser = useAuthStore((state) => state.user);
-  const isPro = currentUser?.plan === 'pro';
   const searchRef = useRef(search);
   searchRef.current = search;
   const lastFilterString = useRef(serializeFilters(parseFilters(search.f)));
@@ -115,13 +107,7 @@ export function BoardPage() {
     null,
   );
   const [deleteList, setDeleteList] = useState<BoardList | null>(null);
-  const [deleteBoardOpen, setDeleteBoardOpen] = useState(false);
-  const [boardSettingsOpen, setBoardSettingsOpen] = useState(search.settings === '1');
   const [labelsManagerOpen, setLabelsManagerOpen] = useState(false);
-  const [settingsName, setSettingsName] = useState('');
-  const [settingsDescription, setSettingsDescription] = useState('');
-  const [settingsCover, setSettingsCover] = useState(LIST_COLORS[0]!);
-  const [settingsVisibility, setSettingsVisibility] = useState<BoardVisibility>('private');
   const [shareOpen, setShareOpen] = useState(false);
   const [shareEmails, setShareEmails] = useState('');
   const [shareRole, setShareRole] = useState<BoardMemberRole>('viewer');
@@ -572,75 +558,6 @@ export function BoardPage() {
     }
   }
 
-  async function archiveBoard() {
-    try {
-      await patch(`/v1/boards/${boardId}`, { archived: true });
-      toast.push(t('common.archive'), { kind: 'success' });
-      await navigate({ to: '/app/$wsSlug', params: { wsSlug } });
-    } catch {
-      toast.push(t('errors.generic'), { kind: 'danger' });
-    }
-  }
-
-  async function removeBoard() {
-    setDeleteBoardOpen(false);
-    try {
-      await del(`/v1/boards/${boardId}`);
-      await navigate({ to: '/app/$wsSlug', params: { wsSlug } });
-      toast.push(t('toast.boardTrashed'), {
-        action: {
-          label: t('common.restore'),
-          onClick: () => {
-            void post(`/v1/boards/${boardId}/restore`).then(() =>
-              navigate({ to: '/app/$wsSlug/boards/$boardId', params: { wsSlug, boardId } }),
-            );
-          },
-        },
-      });
-    } catch {
-      toast.push(t('errors.generic'), { kind: 'danger' });
-    }
-  }
-
-  async function duplicateBoard() {
-    try {
-      const response = await post<{ board_id: string }>(`/v1/boards/${boardId}/duplicate`, {
-        locale: i18n.language === 'en' ? 'en' : 'ru',
-        workspaceId: workspace?.id,
-      });
-      await queryClient.invalidateQueries({ queryKey: ['boards', workspace?.id] });
-      await navigate({
-        to: '/app/$wsSlug/boards/$boardId',
-        params: { wsSlug, boardId: response.board_id },
-      });
-    } catch {
-      toast.push(t('errors.generic'), { kind: 'danger' });
-    }
-  }
-
-  async function saveBoardSettings() {
-    try {
-      const payload: Record<string, unknown> = {
-        name: settingsName.trim(),
-        description: settingsDescription.trim() || null,
-        cover: settingsCover,
-      };
-      if (canManageBoard) payload.visibility = settingsVisibility;
-      await patch(`/v1/boards/${boardId}`, payload);
-      setBoardSettingsOpen(false);
-      await queryClient.invalidateQueries({ queryKey: ['board', boardId] });
-    } catch (error) {
-      toast.push(
-        error instanceof ApiError
-          ? error.code === 'pro_required'
-            ? t('errors.coverPro')
-            : (error.problem.detail ?? t('errors.generic'))
-          : t('errors.generic'),
-        { kind: 'danger' },
-      );
-    }
-  }
-
   async function saveView() {
     if (!viewName.trim() || !workspace) return;
     try {
@@ -728,7 +645,6 @@ export function BoardPage() {
       draft.board.visibility = next;
       if (next === 'private') draft.board.public_token = null;
     });
-    setSettingsVisibility(next);
     setShareResult(null);
     try {
       await patch(`/v1/boards/${boardId}`, { visibility: next });
@@ -1047,88 +963,18 @@ export function BoardPage() {
               ) : null}
             </Button>
           ) : null}
-          <Menu
-            trigger={(props) => (
-              <Button size="sm" icon="more" aria-label={t('common.actions')} {...props} />
-            )}
-          >
-            <MenuItem
-              icon="edit"
-              onClick={() => {
-                setSettingsName(board.name);
-                setSettingsDescription(board.description ?? '');
-                setSettingsCover(board.cover ?? LIST_COLORS[0]!);
-                setSettingsVisibility(board.visibility ?? 'private');
-                setBoardSettingsOpen(true);
-              }}
-            >
-              {t('board.boardSettings')}
-            </MenuItem>
-            {canWrite ? (
-              <MenuItem icon="tag" onClick={() => setLabelsManagerOpen(true)}>
-                {t('board.manageLabels')}
-              </MenuItem>
-            ) : null}
-            <MenuItem
-              icon="plus"
-              onClick={() =>
-                void navigate({ to: '/share/board-accept/$boardId', params: { boardId } })
-              }
-            >
-              {t('board.addToWorkspace')}
-            </MenuItem>
-            <MenuItem icon="duplicate" onClick={() => void duplicateBoard()}>
-              {t('common.duplicate')}
-            </MenuItem>
-            {isPro ? (
-              <>
-                <MenuItem
-                  icon="download"
-                  onClick={() =>
-                    void downloadWithAuth(
-                      `/v1/boards/${boardId}/export?format=json&locale=${i18n.language === 'en' ? 'en' : 'ru'}`,
-                      `${board.name}.json`,
-                    )
-                  }
-                >
-                  {t('board.exportJson')}
-                </MenuItem>
-                <MenuItem
-                  icon="download"
-                  onClick={() =>
-                    void downloadWithAuth(
-                      `/v1/boards/${boardId}/export?format=csv&locale=${i18n.language === 'en' ? 'en' : 'ru'}`,
-                      `${board.name}.csv`,
-                    )
-                  }
-                >
-                  {t('board.exportCsv')}
-                </MenuItem>
-                <MenuItem
-                  icon="download"
-                  onClick={() =>
-                    void downloadWithAuth(
-                      `/v1/boards/${boardId}/export?format=md&locale=${i18n.language === 'en' ? 'en' : 'ru'}`,
-                      `${board.name}.md`,
-                    )
-                  }
-                >
-                  {t('board.exportMd')}
-                </MenuItem>
-              </>
-            ) : null}
-            <div className="menu-separator" />
-            {canManageBoard ? (
-              <>
-                <MenuItem icon="archive" onClick={() => void archiveBoard()}>
-                  {t('board.archiveBoard')}
-                </MenuItem>
-                <MenuItem icon="trash" danger onClick={() => setDeleteBoardOpen(true)}>
-                  {t('board.deleteBoard')}
-                </MenuItem>
-              </>
-            ) : null}
-          </Menu>
+          <BoardActionsMenu
+            board={board}
+            canWrite={canWrite}
+            canManageBoard={canManageBoard}
+            initialSettingsOpen={search.settings === '1'}
+            onLabelsDeleted={(labelId) =>
+              setFilters((current) => ({
+                ...current,
+                labels: current.labels.filter((value) => value !== labelId),
+              }))
+            }
+          />
         </div>
       </div>
 
@@ -1589,145 +1435,6 @@ export function BoardPage() {
         }
       >
         <p className="small">{deleteList?.name}</p>
-      </Modal>
-
-      <Modal
-        open={deleteBoardOpen}
-        onClose={() => setDeleteBoardOpen(false)}
-        title={t('board.deleteBoard')}
-        footer={
-          <>
-            <Button variant="ghost" onClick={() => setDeleteBoardOpen(false)}>
-              {t('common.cancel')}
-            </Button>
-            <Button variant="danger" onClick={() => void removeBoard()}>
-              {t('common.delete')}
-            </Button>
-          </>
-        }
-      >
-        <p className="small">{t('board.deleteConfirm')}</p>
-      </Modal>
-
-      <Modal
-        open={boardSettingsOpen}
-        onClose={() => setBoardSettingsOpen(false)}
-        title={t('board.boardSettings')}
-        footer={
-          <>
-            <Button variant="ghost" onClick={() => setBoardSettingsOpen(false)}>
-              {t('common.cancel')}
-            </Button>
-            <Button variant="primary" onClick={() => void saveBoardSettings()}>
-              {t('common.save')}
-            </Button>
-          </>
-        }
-      >
-        <div className="stack">
-          <div>
-            <label className="label" htmlFor="board-settings-name">
-              {t('workspace.boardName')}
-            </label>
-            <input
-              id="board-settings-name"
-              className="input"
-              value={settingsName}
-              onChange={(event) => setSettingsName(event.target.value)}
-            />
-          </div>
-          <div>
-            <label className="label" htmlFor="board-settings-description">
-              {t('workspace.description')}
-            </label>
-            <textarea
-              id="board-settings-description"
-              className="textarea"
-              value={settingsDescription}
-              onChange={(event) => setSettingsDescription(event.target.value)}
-            />
-          </div>
-          <div>
-            <label className="label" htmlFor="board-settings-visibility">
-              {t('board.visibility')}
-            </label>
-            <select
-              id="board-settings-visibility"
-              className="select"
-              value={settingsVisibility}
-              onChange={(event) => setSettingsVisibility(event.target.value as BoardVisibility)}
-              disabled={!canManageBoard}
-            >
-              <option value="private">{t('board.private')}</option>
-              <option value="public">{t('board.public')}</option>
-            </select>
-            <p className="caption subtle" style={{ marginTop: 4 }}>
-              {settingsVisibility === 'public' ? t('board.publicHint') : t('board.privateHint')}
-            </p>
-          </div>
-          <div>
-            <span className="label">{t('workspace.cover')}</span>
-            <div className="row wrap">
-              {LIST_COLORS.map((color) => (
-                <button
-                  key={color}
-                  type="button"
-                  aria-label={color}
-                  onClick={() => setSettingsCover(color)}
-                  style={{
-                    width: 28,
-                    height: 28,
-                    borderRadius: 999,
-                    background: color,
-                    border:
-                      settingsCover === color
-                        ? '3px solid var(--color-text)'
-                        : '2px solid var(--color-surface)',
-                    cursor: 'pointer',
-                  }}
-                />
-              ))}
-            </div>
-            {isPro ? (
-              <label className="row" style={{ gap: 8, marginTop: 8 }}>
-                <input
-                  type="color"
-                  value={/^#[0-9a-f]{6}$/i.test(settingsCover) ? settingsCover : LIST_COLORS[0]!}
-                  onChange={(event) => setSettingsCover(event.target.value.toUpperCase())}
-                  style={{
-                    width: 36,
-                    height: 28,
-                    padding: 0,
-                    border: 'none',
-                    background: 'none',
-                    cursor: 'pointer',
-                  }}
-                />
-                <span className="caption subtle">{t('board.customCover')}</span>
-              </label>
-            ) : null}
-          </div>
-          <div className="card-panel" style={{ padding: 12, background: 'var(--color-surface-2)' }}>
-            <div className="small">
-              <span className="muted">{t('board.boardOwner')}: </span>
-              <span className="strong">{snapshot?.board_owner?.display_name ?? '—'}</span>
-            </div>
-            <div className="small" style={{ marginTop: 4 }}>
-              <span className="muted">{t('board.workspaceOwner')}: </span>
-              <span className="strong">
-                {snapshot?.workspace.name ?? '—'} · {snapshot?.workspace.owner_name ?? '—'}
-              </span>
-            </div>
-            {snapshot?.linked_workspaces.length ? (
-              <div className="small" style={{ marginTop: 4 }}>
-                <span className="muted">{t('board.linkedWorkspaces')}: </span>
-                <span className="strong">
-                  {snapshot.linked_workspaces.map((item) => item.name).join(', ')}
-                </span>
-              </div>
-            ) : null}
-          </div>
-        </div>
       </Modal>
 
       <Modal

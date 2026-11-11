@@ -18,6 +18,7 @@ import type { BoardSummary, WorkspaceSummary } from '../../lib/api-types';
 import { useAuthStore } from '../../lib/auth-store';
 import { useBoards, useMembers, useMyTasks, useWorkspaces } from '../../lib/queries';
 import { formatDue, LABEL_PALETTE, taskCountLabel } from '../../lib/utils';
+import { BoardActionsMenu } from '../board/BoardActionsMenu';
 
 const TEMPLATES: Array<{ id: BoardTemplate; icon: string }> = [
   { id: 'empty', icon: 'board' },
@@ -315,52 +316,68 @@ export function WorkspaceHomePage() {
       ) : (
         <div className="board-grid">
           {list.map((board) => (
-            <Link
-              key={board.id}
-              to="/app/$wsSlug/boards/$boardId"
-              params={{ wsSlug: workspace.slug, boardId: board.id }}
-              className="board-card"
-            >
-              <span className="board-cover" style={{ background: board.cover ?? undefined }} />
-              <div className="spread" style={{ alignItems: 'flex-start' }}>
-                <span className="strong">{board.name}</span>
-                <button
-                  type="button"
-                  className="favorite-star"
-                  aria-label={
-                    board.is_favorite ? t('workspace.unfavorite') : t('workspace.favorite')
-                  }
-                  onClick={(event) => {
-                    event.preventDefault();
-                    event.stopPropagation();
-                    void toggleFavorite(board);
-                  }}
-                >
-                  {board.is_favorite ? '★' : '☆'}
-                </button>
-              </div>
-              {board.description ? (
-                <span className="small muted clamp-2">{board.description}</span>
-              ) : null}
-              {board.library_origin === 'linked' ? (
-                <span className="badge info">
-                  {t('workspace.linkedBoard', {
-                    workspace: board.origin_workspace_name ?? '—',
-                  })}
-                </span>
-              ) : null}
-              <span className="meta">
-                <span className="row" style={{ gap: 4 }}>
-                  <Icon name="list" size={13} /> {board.card_count ?? 0}
-                </span>
-                <span className="row" style={{ gap: 4 }}>
-                  <Icon name="users" size={13} /> {members.data?.data.length ?? 1}
-                </span>
-                {board.archived_at ? (
-                  <span className="badge warning">{t('common.archive')}</span>
+            <div key={board.id} className="board-card">
+              <Link
+                to="/app/$wsSlug/boards/$boardId"
+                params={{ wsSlug: workspace.slug, boardId: board.id }}
+                className="board-card-main"
+              >
+                <span className="board-cover" style={{ background: board.cover ?? undefined }} />
+                <div className="spread" style={{ alignItems: 'flex-start' }}>
+                  <span className="strong">{board.name}</span>
+                  <button
+                    type="button"
+                    className="favorite-star"
+                    aria-label={
+                      board.is_favorite ? t('workspace.unfavorite') : t('workspace.favorite')
+                    }
+                    onClick={(event) => {
+                      event.preventDefault();
+                      event.stopPropagation();
+                      void toggleFavorite(board);
+                    }}
+                  >
+                    {board.is_favorite ? '★' : '☆'}
+                  </button>
+                </div>
+                {board.description ? (
+                  <span className="small muted clamp-2">{board.description}</span>
                 ) : null}
-              </span>
-            </Link>
+                {board.library_origin === 'linked' ? (
+                  <span className="badge info">
+                    {t('workspace.linkedBoard', {
+                      workspace: board.origin_workspace_name ?? '—',
+                    })}
+                  </span>
+                ) : null}
+                <span className="meta">
+                  <span className="row" style={{ gap: 4 }}>
+                    <Icon name="list" size={13} /> {board.card_count ?? 0}
+                  </span>
+                  <span className="row" style={{ gap: 4 }}>
+                    <Icon name="users" size={13} /> {members.data?.data.length ?? 1}
+                  </span>
+                  {board.archived_at ? (
+                    <span className="badge warning">{t('common.archive')}</span>
+                  ) : null}
+                </span>
+              </Link>
+              <div
+                className="board-card-menu"
+                onClick={(event) => {
+                  event.preventDefault();
+                  event.stopPropagation();
+                }}
+              >
+                <BoardActionsMenu
+                  board={board}
+                  canWrite={role !== 'viewer'}
+                  canManageBoard={
+                    role === 'owner' || role === 'manager' || board.created_by === currentUser?.id
+                  }
+                />
+              </div>
+            </div>
           ))}
           {canCreate ? (
             <button
