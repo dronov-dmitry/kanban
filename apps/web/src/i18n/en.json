@@ -218,13 +218,12 @@
     "stackDeploy": "GitHub Pages for the web app, Workers for the API, GitHub Actions for CI/CD",
     "authorTitle": "About the author",
     "authorName": "Dmitry Dronov",
-    "authorRole": "Author of the 5D service, BIM developer",
-    "authorBio": "BIM developer and author of the 5D service, a web app that connects a Revit 3D model with the work schedule and cost. This kanban follows the same idea: clear data, a simple interface and real work instead of settings.",
+    "authorRole": "BIM developer",
+    "authorBio": "BIM developer a web app that connects a Revit 3D model with the work schedule and cost. This kanban follows the same idea: clear data, a simple interface and real work instead of settings.",
     "authorSite": "Website",
     "authorGithub": "GitHub",
     "authorTelegram": "Telegram",
-    "authorYoutube": "YouTube",
-    "fiveDLink": "5D service"
+    "authorYoutube": "YouTube"
   },
   "workspace": {
     "boards": "Boards",

@@ -218,13 +218,12 @@
     "stackDeploy": "GitHub Pages для веб-приложения, Workers для API, GitHub Actions для CI/CD",
     "authorTitle": "Об авторе",
     "authorName": "Dmitry Dronov",
-    "authorRole": "Автор сервиса 5D, BIM-разработчик",
-    "authorBio": "BIM-разработчик, автор сервиса 5D — веб-приложения, которое связывает 3D-модель Revit с графиком работ и стоимостью. Этот канбан продолжает ту же идею: понятные данные, простой интерфейс и реальная работа вместо настроек.",
+    "authorRole": "BIM-разработчик",
+    "authorBio": "BIM-разработчик — веб-приложения, которое связывает 3D-модель Revit с графиком работ и стоимостью. Этот канбан продолжает ту же идею: понятные данные, простой интерфейс и реальная работа вместо настроек.",
     "authorSite": "Сайт",
     "authorGithub": "GitHub",
     "authorTelegram": "Telegram",
-    "authorYoutube": "YouTube",
-    "fiveDLink": "Сервис 5D"
+    "authorYoutube": "YouTube"
   },
   "workspace": {
     "boards": "Доски",

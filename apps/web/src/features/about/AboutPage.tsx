@@ -1,6 +1,7 @@
 import { Link } from '@tanstack/react-router';
 import { useTranslation } from 'react-i18next';
 import { Avatar, Icon } from '../../components/ui';
+import { useAuthStore } from '../../lib/auth-store';
 
 const AUTHOR_LINKS = [
   { key: 'authorSite', href: 'https://dronov-dmitry.github.io/', icon: 'globe' as const },
@@ -24,36 +25,52 @@ const FEATURES = [1, 2, 3, 4, 5, 6];
 
 export function AboutPage() {
   const { t } = useTranslation();
+  const user = useAuthStore((state) => state.user);
+  const refreshToken = useAuthStore((state) => state.refreshToken);
+  const authenticated = Boolean(user && refreshToken);
 
   return (
     <div className="landing">
-      <nav className="landing-nav">
-        <Link to="/" className="row" style={{ color: 'inherit', textDecoration: 'none' }}>
-          <span className="logo-mark" aria-hidden="true">
-            <Icon name="board" size={18} />
-          </span>
-          <span className="strong" style={{ fontSize: 16 }}>
-            Kanban
-          </span>
-        </Link>
-        <div className="links">
-          <Link to="/" hash="features" className="hide-mobile">
-            {t('landing.navFeatures')}
+      <div className="landing-nav-bar">
+        <nav className="landing-nav">
+          <Link to="/" className="row" style={{ color: 'inherit', textDecoration: 'none' }}>
+            <span className="logo-mark" aria-hidden="true">
+              <Icon name="board" size={18} />
+            </span>
+            <span className="strong" style={{ fontSize: 16 }}>
+              Kanban
+            </span>
           </Link>
-          <Link to="/" hash="pricing" className="hide-mobile">
-            {t('landing.navPricing')}
-          </Link>
-          <Link to="/about" className="strong">
-            {t('landing.navAbout')}
-          </Link>
-          <Link to="/login" className="btn ghost sm">
-            {t('landing.login')}
-          </Link>
-          <Link to="/login" className="btn primary sm">
-            {t('landing.start')}
-          </Link>
-        </div>
-      </nav>
+          <div className="links">
+            <Link to="/" hash="features" className="hide-mobile">
+              {t('landing.navFeatures')}
+            </Link>
+            <Link to="/" hash="pricing" className="hide-mobile">
+              {t('landing.navPricing')}
+            </Link>
+            <Link to="/" hash="faq" className="hide-mobile">
+              FAQ
+            </Link>
+            <Link to="/about" className="hide-mobile">
+              {t('landing.navAbout')}
+            </Link>
+            {authenticated ? (
+              <Link to="/app" className="btn primary sm">
+                {t('landing.cabinet')}
+              </Link>
+            ) : (
+              <>
+                <Link to="/login" className="btn ghost sm">
+                  {t('landing.login')}
+                </Link>
+                <Link to="/login" className="btn primary sm">
+                  {t('landing.start')}
+                </Link>
+              </>
+            )}
+          </div>
+        </nav>
+      </div>
 
       <header className="hero" style={{ gridTemplateColumns: '1fr' }}>
         <div>
@@ -154,16 +171,6 @@ export function AboutPage() {
               </a>
             ))}
           </div>
-        </div>
-        <div className="author-links" style={{ marginTop: 16 }}>
-          <a href="https://dronov-dmitry.github.io/kanban/" target="_blank" rel="noreferrer">
-            <Icon name="board" size={14} />
-            {t('about.openSite')}
-          </a>
-          <a href="https://dronov-dmitry.github.io/5D/info.html" target="_blank" rel="noreferrer">
-            <Icon name="external" size={14} />
-            {t('about.fiveDLink')}
-          </a>
         </div>
       </section>
 
