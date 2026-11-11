@@ -78,7 +78,7 @@ export function ArchivePage() {
         <div>
           <h1>{t('nav.archive')}</h1>
           <p className="muted small" style={{ marginTop: 4 }}>
-            {t('workspace.boards')} и {t('card.title').toLowerCase()}
+            {t('archive.subtitle')}
           </p>
         </div>
         <div className="row">

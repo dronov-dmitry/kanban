@@ -63,7 +63,14 @@
     "week": "Week",
     "noData": "No data",
     "apply": "Apply",
-    "reset": "Reset"
+    "reset": "Reset",
+    "undo": "Undo",
+    "install": "Install",
+    "installApp": "Install Kanban on your home screen",
+    "updating": "Updating…",
+    "mainNav": "Main navigation",
+    "mobileNav": "Mobile navigation",
+    "commandPalette": "Command palette"
   },
   "nav": {
     "boards": "Boards",
@@ -115,6 +122,17 @@
     "notConfigured": "Sign-in is not configured: set GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET"
   },
   "landing": {
+    "navFeatures": "Features",
+    "navPricing": "Pricing",
+    "demoAria": "Interactive kanban board demo",
+    "demoEmpty": "Drag a card here",
+    "demoColumnTodo": "Backlog",
+    "demoColumnDoing": "In progress",
+    "demoColumnDone": "Done",
+    "demoCard1": "Triage the backlog for the week",
+    "demoCard2": "Review the design with the team",
+    "demoCard3": "Fix onboarding",
+    "demoCard4": "Launch the landing page",
     "tagline": "A kanban that does not get in the way",
     "headline": "The board that does not get in the way",
     "lead": "A lightweight kanban for teams of up to 15: fast start, keyboard-first, offline, and real-time collaboration.",
@@ -192,6 +210,7 @@
     "addList": "+ Add column",
     "newList": "New column",
     "listName": "Column name",
+    "list": "Column",
     "wipLimit": "WIP limit",
     "wipExceeded": "Column “{{name}}” already has {{count}} of {{limit}}. Add anyway?",
     "wipOver": "Limit exceeded by {{count}}",
@@ -227,7 +246,8 @@
     "copiedLink": "Card link copied",
     "wipWarning": "Column is over its limit",
     "hideEmpty": "Hide empty columns",
-    "deleteConfirm": "Move the board to trash? It can be restored within 30 days."
+    "deleteConfirm": "Move the board to trash? It can be restored within 30 days.",
+    "localChanges": "Changes are saved locally and will sync automatically."
   },
   "card": {
     "title": "Title",
@@ -376,5 +396,46 @@
     "emailUnverified": "Confirm your email before inviting members.",
     "lastOwner": "The last owner cannot be removed.",
     "versionConflict": "Another member changed this card."
+  },
+  "meta": {
+    "title": "Kanban — the board that stays out of your way",
+    "description": "Kanban is a lightweight board for small teams: keyboard-first, offline-ready, and real-time collaborative."
+  },
+  "archive": {
+    "subtitle": "Boards and cards"
+  },
+  "toast": {
+    "cardMoved": "Card moved",
+    "boardTrashed": "Board moved to trash",
+    "cardArchived": "Card moved to archive",
+    "cardTrashed": "Card moved to trash"
+  },
+  "activity": {
+    "created": "created the card",
+    "updated": "updated",
+    "moved": "moved the card",
+    "trashed": "moved to trash",
+    "restored": "restored the card",
+    "archived": "archived the card",
+    "commented": "commented",
+    "attached": "added an attachment",
+    "duplicated": "duplicated the card"
+  },
+  "shortcuts": {
+    "newCard": "New card",
+    "openCard": "Open card / save",
+    "closeCancel": "Close / cancel",
+    "palette": "Command palette",
+    "search": "Search",
+    "filters": "Filters",
+    "cardNav": "Next / previous card",
+    "grab": "Pick up / drop card",
+    "move": "Move while dragging",
+    "editCard": "Edit card",
+    "assignSelf": "Assign to me",
+    "dueDate": "Due date",
+    "labels": "Labels",
+    "undo": "Undo (10 seconds)",
+    "help": "This cheat sheet"
   }
 }

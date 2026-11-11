@@ -1,5 +1,6 @@
 import type { Attachment, Checklist, Comment, Member } from '@kanban/shared';
 import { useQueryClient } from '@tanstack/react-query';
+import type { TFunction } from 'i18next';
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
@@ -250,7 +251,7 @@ export function CardModal({ cardId, onClose }: { cardId: string; onClose: () => 
     if (!card) return;
     await save({ archived: true });
     onClose();
-    toast.push('Карточка перемещена в архив', {
+    toast.push(t('toast.cardArchived'), {
       action: {
         label: t('common.restore'),
         onClick: () => {
@@ -268,7 +269,7 @@ export function CardModal({ cardId, onClose }: { cardId: string; onClose: () => 
     await queryClient.invalidateQueries({ queryKey: ['board', card.board_id] });
     setDeleteOpen(false);
     onClose();
-    toast.push('Карточка перемещена в корзину', {
+    toast.push(t('toast.cardTrashed'), {
       action: {
         label: t('common.restore'),
         onClick: () => {
@@ -639,7 +640,7 @@ export function CardModal({ cardId, onClose }: { cardId: string; onClose: () => 
                       <span className="grow">
                         <span className="strong small">{event.actor_name}</span>{' '}
                         <span className="muted small">
-                          {activityLabel(event.verb, event.payload_json)}
+                          {activityLabel(event.verb, event.payload_json, t)}
                         </span>
                       </span>
                       <span className="caption subtle">
@@ -873,6 +874,7 @@ function AttachmentRow({
   onDownload: () => void;
   onDelete: () => void;
 }) {
+  const { t } = useTranslation();
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const isImage = attachment.mime.startsWith('image/') && attachment.mime !== 'image/svg+xml';
 
@@ -919,15 +921,21 @@ function AttachmentRow({
         size="sm"
         variant="ghost"
         icon="download"
-        aria-label="Download"
+        aria-label={t('common.download')}
         onClick={onDownload}
       />
-      <Button size="sm" variant="ghost" icon="trash" aria-label="Delete" onClick={onDelete} />
+      <Button
+        size="sm"
+        variant="ghost"
+        icon="trash"
+        aria-label={t('common.delete')}
+        onClick={onDelete}
+      />
     </div>
   );
 }
 
-function activityLabel(verb: string, payloadJson: string): string {
+function activityLabel(verb: string, payloadJson: string, t: TFunction): string {
   let payload: Record<string, unknown> = {};
   try {
     payload = JSON.parse(payloadJson);
@@ -936,23 +944,27 @@ function activityLabel(verb: string, payloadJson: string): string {
   }
   switch (verb) {
     case 'card.created':
-      return 'создал(а) карточку';
-    case 'card.updated':
-      return `изменил(а)${Array.isArray(payload.changed) ? `: ${(payload.changed as string[]).join(', ')}` : ''}`;
+      return t('activity.created');
+    case 'card.updated': {
+      const changed = Array.isArray(payload.changed)
+        ? `: ${(payload.changed as string[]).join(', ')}`
+        : '';
+      return `${t('activity.updated')}${changed}`;
+    }
     case 'card.moved':
-      return 'переместил(а) карточку';
+      return t('activity.moved');
     case 'card.deleted':
-      return 'переместил(а) в корзину';
+      return t('activity.trashed');
     case 'card.restored':
-      return 'восстановил(а) карточку';
+      return t('activity.restored');
     case 'card.archived':
-      return 'архивировал(а) карточку';
+      return t('activity.archived');
     case 'comment.created':
-      return 'оставил(а) комментарий';
+      return t('activity.commented');
     case 'attachment.added':
-      return 'добавил(а) вложение';
+      return t('activity.attached');
     case 'card.duplicated':
-      return 'дублировал(а) карточку';
+      return t('activity.duplicated');
     default:
       return verb;
   }

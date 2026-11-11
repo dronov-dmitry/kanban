@@ -273,7 +273,7 @@ export function AppShell() {
           </Menu>
 
           {current ? (
-            <nav className="nav" aria-label="Main">
+            <nav className="nav" aria-label={t('common.mainNav')}>
               {navItems.map((item) => (
                 <Link
                   key={item.to}
@@ -309,7 +309,7 @@ export function AppShell() {
           {current ? (
             <>
               <div className="nav-label">{t('workspace.boards')}</div>
-              <nav className="nav" aria-label="Boards">
+              <nav className="nav" aria-label={t('nav.boards')}>
                 {(boards.data?.data ?? []).slice(0, 8).map((board) => (
                   <Link
                     key={board.id}
@@ -445,7 +445,7 @@ export function AppShell() {
                 variant="ghost"
                 size="sm"
                 icon="palette"
-                aria-label="Command palette"
+                aria-label={t('common.commandPalette')}
                 title="Ctrl+K"
                 onClick={() => setPaletteOpen(true)}
               />
@@ -555,7 +555,7 @@ export function AppShell() {
               style={{ background: 'var(--color-info-soft)', color: 'var(--color-info)' }}
             >
               <Icon name="download" size={15} />
-              <span className="grow">Установить Kanban на главный экран</span>
+              <span className="grow">{t('common.installApp')}</span>
               <Button
                 size="sm"
                 onClick={async () => {
@@ -563,7 +563,7 @@ export function AppShell() {
                   setInstallPrompt(null);
                 }}
               >
-                Установить
+                {t('common.install')}
               </Button>
             </div>
           ) : null}
@@ -573,7 +573,7 @@ export function AppShell() {
           </main>
         </div>
 
-        <nav className="mobile-nav" aria-label="Mobile">
+        <nav className="mobile-nav" aria-label={t('common.mobileNav')}>
           <Link to="/app" className={cn(path === '/app' && 'active')}>
             <Icon name="board" size={20} />
             <span>{t('nav.boards')}</span>

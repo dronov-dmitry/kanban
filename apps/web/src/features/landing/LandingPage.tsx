@@ -5,17 +5,17 @@ import { Icon } from '../../components/ui';
 
 interface DemoCard {
   id: string;
-  title: string;
+  titleKey: string;
   color: string;
 }
 
 const INITIAL: Record<string, DemoCard[]> = {
   todo: [
-    { id: 'd1', title: 'Разобрать бэклог на неделю', color: '#0EA5E9' },
-    { id: 'd2', title: 'Согласовать макет с командой', color: '#7C3AED' },
+    { id: 'd1', titleKey: 'landing.demoCard1', color: '#0EA5E9' },
+    { id: 'd2', titleKey: 'landing.demoCard2', color: '#7C3AED' },
   ],
-  doing: [{ id: 'd3', title: 'Починить онбординг', color: '#B45309' }],
-  done: [{ id: 'd4', title: 'Запустить лендинг', color: '#15803D' }],
+  doing: [{ id: 'd3', titleKey: 'landing.demoCard3', color: '#B45309' }],
+  done: [{ id: 'd4', titleKey: 'landing.demoCard4', color: '#15803D' }],
 };
 
 function DemoCardView({
@@ -31,6 +31,7 @@ function DemoCardView({
   onPointerMove: (event: React.PointerEvent<HTMLDivElement>) => void;
   onPointerUp: (event: React.PointerEvent<HTMLDivElement>) => void;
 }) {
+  const { t } = useTranslation();
   const dragging = drag?.id === card.id;
   return (
     <div
@@ -52,7 +53,7 @@ function DemoCardView({
       onPointerUp={onPointerUp}
       onPointerCancel={onPointerUp}
     >
-      {card.title}
+      {t(card.titleKey)}
     </div>
   );
 }
@@ -74,6 +75,7 @@ function DemoColumn({
   onPointerMove: (event: React.PointerEvent<HTMLDivElement>) => void;
   onPointerUp: (event: React.PointerEvent<HTMLDivElement>) => void;
 }) {
+  const { t } = useTranslation();
   return (
     <div className="demo-column" data-demo-column={id}>
       <div className="demo-column-title">{title}</div>
@@ -89,7 +91,7 @@ function DemoColumn({
       ))}
       {cards.length === 0 ? (
         <div className="caption subtle" style={{ padding: 6 }}>
-          Перетащите карточку сюда
+          {t('landing.demoEmpty')}
         </div>
       ) : null}
     </div>
@@ -156,10 +158,10 @@ export function LandingPage() {
         </Link>
         <div className="links">
           <a href="#features" className="hide-mobile">
-            Возможности
+            {t('landing.navFeatures')}
           </a>
           <a href="#pricing" className="hide-mobile">
-            Тарифы
+            {t('landing.navPricing')}
           </a>
           <a href="#faq" className="hide-mobile">
             FAQ
@@ -202,16 +204,16 @@ export function LandingPage() {
         </div>
 
         <div id="demo">
-          <div className="demo-board" role="region" aria-label="Интерактивное демо канбан-доски">
+          <div className="demo-board" role="region" aria-label={t('landing.demoAria')}>
             {[
-              ['todo', 'Бэклог'],
-              ['doing', 'В работе'],
-              ['done', 'Готово'],
-            ].map(([id, title]) => (
+              ['todo', 'landing.demoColumnTodo'],
+              ['doing', 'landing.demoColumnDoing'],
+              ['done', 'landing.demoColumnDone'],
+            ].map(([id, titleKey]) => (
               <DemoColumn
                 key={id}
                 id={id!}
-                title={title!}
+                title={t(titleKey!)}
                 cards={columns[id!] ?? []}
                 drag={drag}
                 onPointerDown={onPointerDown}

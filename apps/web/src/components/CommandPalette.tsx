@@ -155,7 +155,12 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
         if (event.target === event.currentTarget) onClose();
       }}
     >
-      <div className="palette" role="dialog" aria-modal="true" aria-label="Command palette">
+      <div
+        className="palette"
+        role="dialog"
+        aria-modal="true"
+        aria-label={t('common.commandPalette')}
+      >
         <input
           ref={inputRef}
           className="palette-input"
@@ -224,21 +229,21 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
 }
 
 const SHORTCUTS: Array<[string, string]> = [
-  ['N', 'Новая карточка'],
-  ['Enter', 'Открыть карточку / сохранить'],
-  ['Esc', 'Закрыть / отменить'],
-  ['Ctrl / Cmd + K', 'Командная палитра'],
-  ['/', 'Поиск'],
-  ['F', 'Фильтры'],
-  ['J / K', 'Следующая / предыдущая карточка'],
-  ['Space', 'Взять / отпустить карточку'],
-  ['↑ / ↓ / ← / →', 'Перемещение в режиме DnD'],
-  ['E', 'Редактировать карточку'],
-  ['A', 'Назначить на себя'],
-  ['D', 'Дедлайн'],
-  ['L', 'Метки'],
-  ['Ctrl / Cmd + Z', 'Undo (10 секунд)'],
-  ['?', 'Эта шпаргалка'],
+  ['N', 'shortcuts.newCard'],
+  ['Enter', 'shortcuts.openCard'],
+  ['Esc', 'shortcuts.closeCancel'],
+  ['Ctrl / Cmd + K', 'shortcuts.palette'],
+  ['/', 'shortcuts.search'],
+  ['F', 'shortcuts.filters'],
+  ['J / K', 'shortcuts.cardNav'],
+  ['Space', 'shortcuts.grab'],
+  ['↑ / ↓ / ← / →', 'shortcuts.move'],
+  ['E', 'shortcuts.editCard'],
+  ['A', 'shortcuts.assignSelf'],
+  ['D', 'shortcuts.dueDate'],
+  ['L', 'shortcuts.labels'],
+  ['Ctrl / Cmd + Z', 'shortcuts.undo'],
+  ['?', 'shortcuts.help'],
 ];
 
 export function ShortcutsModal({ open, onClose }: { open: boolean; onClose: () => void }) {
@@ -247,12 +252,12 @@ export function ShortcutsModal({ open, onClose }: { open: boolean; onClose: () =
     <Modal open={open} onClose={onClose} title={t('common.settings')}>
       <table className="table" style={{ minWidth: 0 }}>
         <tbody>
-          {SHORTCUTS.map(([key, label]) => (
+          {SHORTCUTS.map(([key, labelKey]) => (
             <tr key={key}>
               <td style={{ width: 160 }}>
                 <span className="kbd">{key}</span>
               </td>
-              <td>{label}</td>
+              <td>{t(labelKey)}</td>
             </tr>
           ))}
         </tbody>

@@ -4,7 +4,7 @@ import { devLogin } from './login.mjs';
 const BASE = process.env.BASE_URL ?? 'http://localhost:5173';
 const API = process.env.API_URL ?? 'http://localhost:8787';
 const browser = await chromium.launch({ headless: true });
-const context = await browser.newContext({ viewport: { width: 1440, height: 900 } });
+const context = await browser.newContext({ viewport: { width: 1440, height: 900 }, locale: 'ru-RU' });
 const page = await context.newPage();
 const errors = [];
 page.on('pageerror', (error) => errors.push(`pageerror: ${error.message}`));

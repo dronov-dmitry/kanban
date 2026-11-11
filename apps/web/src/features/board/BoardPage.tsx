@@ -378,9 +378,9 @@ export function BoardPage() {
       rollback: false,
     });
     if (original && original.list_id !== listId) {
-      toast.push('Карточка перемещена', {
+      toast.push(t('toast.cardMoved'), {
         action: {
-          label: t('common.reset') + ' / Undo',
+          label: t('common.undo'),
           onClick: () => {
             void post(`/v1/cards/${cardId}/move`, {
               listId: original.list_id,
@@ -541,7 +541,7 @@ export function BoardPage() {
     try {
       await del(`/v1/boards/${boardId}`);
       await navigate({ to: '/app/$wsSlug', params: { wsSlug } });
-      toast.push('Доска перемещена в корзину', {
+      toast.push(t('toast.boardTrashed'), {
         action: {
           label: t('common.restore'),
           onClick: () => {
@@ -827,8 +827,7 @@ export function BoardPage() {
         <div className="banner" role="status">
           <Icon name="wifi-off" size={15} />
           <span className="grow">
-            {t('common.offline')}. {t('board.emptyFilter') ? '' : ''}
-            Изменения сохраняются локально и уйдут сами.
+            {t('common.offline')}. {t('board.localChanges')}
           </span>
         </div>
       ) : null}
@@ -1126,7 +1125,7 @@ export function BoardPage() {
 
       {boardQuery.isFetching && !boardQuery.isLoading ? (
         <div className="caption subtle" style={{ position: 'absolute', top: 8, right: 16 }}>
-          Обновление…
+          {t('common.updating')}
         </div>
       ) : null}
 

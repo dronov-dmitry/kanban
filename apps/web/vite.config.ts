@@ -48,10 +48,10 @@ export default defineConfig({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.svg', 'icons/apple-touch-icon.png'],
       manifest: {
-        name: 'Kanban — доска, которая не мешает',
+        name: 'Kanban',
         short_name: 'Kanban',
-        description: 'Лёгкая канбан-доска для небольших команд с офлайн-режимом',
-        lang: 'ru',
+        description: 'A lightweight kanban board for small teams with offline support',
+        lang: 'en',
         start_url: base,
         scope: base,
         display: 'standalone',
