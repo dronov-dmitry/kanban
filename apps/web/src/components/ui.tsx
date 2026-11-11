@@ -467,40 +467,77 @@ export function Menu({
   align?: 'left' | 'right';
 }) {
   const [open, setOpen] = useState(false);
+  const [position, setPosition] = useState<{ top: number; left?: number; right?: number } | null>(
+    null,
+  );
   const ref = useRef<HTMLDivElement>(null);
+  const dropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!open) return;
     const onDown = (event: MouseEvent) => {
-      if (ref.current && !ref.current.contains(event.target as Node)) setOpen(false);
+      const target = event.target as Node;
+      if (ref.current?.contains(target) || dropdownRef.current?.contains(target)) return;
+      setOpen(false);
     };
     const onKey = (event: KeyboardEvent) => {
       if (event.key === 'Escape') setOpen(false);
     };
+    const onViewportChange = () => setOpen(false);
     document.addEventListener('mousedown', onDown);
     document.addEventListener('keydown', onKey);
+    window.addEventListener('scroll', onViewportChange, true);
+    window.addEventListener('resize', onViewportChange);
     return () => {
       document.removeEventListener('mousedown', onDown);
       document.removeEventListener('keydown', onKey);
+      window.removeEventListener('scroll', onViewportChange, true);
+      window.removeEventListener('resize', onViewportChange);
     };
   }, [open]);
 
   return (
     <div className="relative" ref={ref}>
       {trigger({
-        onClick: () => setOpen((value) => !value),
+        onClick: () => {
+          if (open) {
+            setOpen(false);
+            return;
+          }
+          const rect = ref.current?.getBoundingClientRect();
+          if (rect) {
+            setPosition({
+              top: rect.bottom + 4,
+              ...(align === 'right'
+                ? { right: Math.max(8, window.innerWidth - rect.right) }
+                : { left: rect.left }),
+            });
+          }
+          setOpen(true);
+        },
         'aria-expanded': open,
         'aria-haspopup': 'menu',
       })}
-      {open ? (
-        <div
-          className={cn('dropdown', align === 'right' && 'right')}
-          role="menu"
-          onClick={() => setOpen(false)}
-        >
-          {children}
-        </div>
-      ) : null}
+      {open && position
+        ? createPortal(
+            <div
+              ref={dropdownRef}
+              className={cn('dropdown', align === 'right' && 'right')}
+              role="menu"
+              style={{
+                position: 'fixed',
+                top: position.top,
+                left: position.left,
+                right: position.right,
+                zIndex: 1000,
+              }}
+              onClick={() => setOpen(false)}
+            >
+              {children}
+            </div>,
+            document.body,
+          )
+        : null}
     </div>
   );
 }

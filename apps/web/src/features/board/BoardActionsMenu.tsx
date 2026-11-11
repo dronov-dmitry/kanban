@@ -33,16 +33,25 @@ export function BoardActionsMenu({
   const toast = useToast();
   const { wsSlug } = useParams({ strict: false }) as { wsSlug?: string };
   const isPro = useAuthStore((state) => state.user?.plan === 'pro');
+  const workspacesQuery = useWorkspaces();
 
   const [settingsOpen, setSettingsOpen] = useState(Boolean(initialSettingsOpen));
   const [labelsOpen, setLabelsOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [leaveOpen, setLeaveOpen] = useState(false);
+  const [moveOpen, setMoveOpen] = useState(false);
+  const [moveTarget, setMoveTarget] = useState('');
+  const [moving, setMoving] = useState(false);
 
   async function archiveBoard() {
     try {
       await patch(`/v1/boards/${board.id}`, { archived: true });
-      await queryClient.invalidateQueries({ queryKey: ['boards', board.workspace_id] });
+      await queryClient.refetchQueries({
+        queryKey: ['boards', board.workspace_id],
+        type: 'all',
+      });
+      await queryClient.invalidateQueries({ queryKey: ['boards', 'shared'] });
+      await queryClient.invalidateQueries({ queryKey: ['workspaces'] });
       toast.push(t('common.archive'), { kind: 'success' });
       await navigate({ to: '/app/$wsSlug', params: { wsSlug: wsSlug ?? '' } });
     } catch {
@@ -54,7 +63,12 @@ export function BoardActionsMenu({
     setDeleteOpen(false);
     try {
       await del(`/v1/boards/${board.id}`);
-      await queryClient.invalidateQueries({ queryKey: ['boards', board.workspace_id] });
+      await queryClient.refetchQueries({
+        queryKey: ['boards', board.workspace_id],
+        type: 'all',
+      });
+      await queryClient.invalidateQueries({ queryKey: ['boards', 'shared'] });
+      await queryClient.invalidateQueries({ queryKey: ['workspaces'] });
       await navigate({ to: '/app/$wsSlug', params: { wsSlug: wsSlug ?? '' } });
       toast.push(t('toast.boardTrashed'), {
         action: {
@@ -120,6 +134,38 @@ export function BoardActionsMenu({
     }
   }
 
+  async function moveBoardToWorkspace() {
+    if (!moveTarget || moving) return;
+    setMoving(true);
+    try {
+      const response = await post<{ workspace: { id: string; name: string; slug: string } }>(
+        `/v1/boards/${board.id}/move`,
+        { workspaceId: moveTarget },
+      );
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['boards', board.workspace_id] }),
+        queryClient.invalidateQueries({ queryKey: ['boards', response.workspace.id] }),
+        queryClient.invalidateQueries({ queryKey: ['workspaces'] }),
+        queryClient.invalidateQueries({ queryKey: ['board', board.id] }),
+      ]);
+      setMoveOpen(false);
+      toast.push(t('common.saved'), { kind: 'success' });
+      await navigate({
+        to: '/app/$wsSlug/boards/$boardId',
+        params: { wsSlug: response.workspace.slug, boardId: board.id },
+      });
+    } catch (error) {
+      toast.push(
+        error instanceof ApiError
+          ? (error.problem.detail ?? t('errors.generic'))
+          : t('errors.generic'),
+        { kind: 'danger' },
+      );
+    } finally {
+      setMoving(false);
+    }
+  }
+
   return (
     <>
       <Menu
@@ -142,17 +188,11 @@ export function BoardActionsMenu({
             {t('board.manageLabels')}
           </MenuItem>
         ) : null}
-        <MenuItem
-          icon="plus"
-          onClick={() =>
-            void navigate({
-              to: '/share/board-accept/$boardId',
-              params: { boardId: board.id },
-            })
-          }
-        >
-          {t('board.addToWorkspace')}
-        </MenuItem>
+        {canManageBoard ? (
+          <MenuItem icon="move" onClick={() => setMoveOpen(true)}>
+            {t('board.moveToWorkspace')}
+          </MenuItem>
+        ) : null}
         {canWrite ? (
           <MenuItem icon="duplicate" onClick={() => void duplicateBoard()}>
             {t('common.duplicate')}
@@ -237,6 +277,43 @@ export function BoardActionsMenu({
       ) : null}
 
       <Modal
+        open={moveOpen}
+        onClose={() => setMoveOpen(false)}
+        title={t('board.moveToWorkspace')}
+        footer={
+          <>
+            <Button variant="ghost" onClick={() => setMoveOpen(false)}>
+              {t('common.cancel')}
+            </Button>
+            <Button
+              variant="primary"
+              disabled={!moveTarget || moving}
+              onClick={() => void moveBoardToWorkspace()}
+            >
+              {t('board.moveToWorkspaceAction')}
+            </Button>
+          </>
+        }
+      >
+        <p className="small muted">{t('board.moveToWorkspaceHint')}</p>
+        <select
+          className="select"
+          style={{ marginTop: 10 }}
+          value={moveTarget}
+          onChange={(event) => setMoveTarget(event.target.value)}
+        >
+          <option value="">—</option>
+          {(workspacesQuery.data?.data ?? [])
+            .filter((workspace) => workspace.id !== board.workspace_id)
+            .map((workspace) => (
+              <option key={workspace.id} value={workspace.id}>
+                {workspace.name}
+              </option>
+            ))}
+        </select>
+      </Modal>
+
+      <Modal
         open={leaveOpen}
         onClose={() => setLeaveOpen(false)}
         title={t('board.leaveBoardTitle')}
@@ -311,7 +388,7 @@ function BoardSettingsDialog({
     snapshot?.can_manage_roles ??
     Boolean(currentUser && snapshot?.board.created_by === currentUser.id);
 
-  async function changeMemberRole(userId: string, role: 'manager' | 'worker') {
+  async function changeMemberRole(userId: string, role: 'viewer' | 'manager' | 'worker') {
     setMemberBusy(userId);
     try {
       await patch(`/v1/boards/${board.id}/members/${userId}`, { role });
@@ -569,23 +646,19 @@ function BoardSettingsDialog({
                     <select
                       className="select"
                       style={{ width: 140, minHeight: 30 }}
-                      value={boardRow.role === 'viewer' ? '' : boardRow.role}
+                      value={boardRow.role}
                       disabled={memberBusy === member.user_id}
                       onChange={(event) =>
                         void changeMemberRole(
                           member.user_id,
-                          event.target.value as 'manager' | 'worker',
+                          event.target.value as 'viewer' | 'manager' | 'worker',
                         )
                       }
                       aria-label={t('settings.role')}
                     >
-                      {boardRow.role === 'viewer' ? (
-                        <option value="" disabled>
-                          {t('settings.viewer')}
-                        </option>
-                      ) : null}
                       <option value="manager">{t('board.roleManager')}</option>
                       <option value="worker">{t('board.roleWorker')}</option>
+                      <option value="viewer">{t('settings.viewer')}</option>
                     </select>
                   ) : (
                     <span className="badge">{t(boardRoleKey(member.role))}</span>

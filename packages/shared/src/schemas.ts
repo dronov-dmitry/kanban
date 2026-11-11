@@ -88,7 +88,7 @@ export const cardDuplicateSchema = z.object({
 export const boardVisibilitySchema = z.enum(['private', 'public']);
 export const boardMemberRoleSchema = z.enum(['viewer', 'manager', 'worker']);
 /** Roles the board owner can pick when resolving a request or editing a member. */
-export const boardMemberAssignableRoleSchema = z.enum(['manager', 'worker']);
+export const boardMemberAssignableRoleSchema = z.enum(['viewer', 'manager', 'worker']);
 
 export const boardPatchSchema = z.object({
   name: z.string().trim().min(1).max(120).optional(),

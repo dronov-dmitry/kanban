@@ -148,7 +148,7 @@ export function useArchive(workspaceId: string | undefined) {
 export function useAudit(workspaceId: string | undefined, enabled: boolean) {
   return useQuery({
     queryKey: ['audit', workspaceId],
-    queryFn: () => get<{ data: AuditRow[] }>(`/v1/workspaces/${workspaceId}/audit?limit=100`),
+    queryFn: () => get<{ data: AuditRow[] }>(`/v1/workspaces/${workspaceId}/audit?limit=20`),
     enabled: Boolean(workspaceId) && enabled,
   });
 }

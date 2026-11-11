@@ -3,14 +3,13 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useNavigate, useParams, useSearch } from '@tanstack/react-router';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { EmailInput } from '../../components/EmailInput';
 import { Avatar, Button, EmptyState, Icon, Modal, useToast } from '../../components/ui';
 import { useWorkspace } from '../../components/workspace-context';
 import { del, patch, post } from '../../lib/api';
-import type { InvitationSummary } from '../../lib/api-types';
 import { useAuthStore } from '../../lib/auth-store';
 import { useAudit, useInvitations, useMembers, useWorkspaceBans } from '../../lib/queries';
 import { cn, formatDate, formatRelative } from '../../lib/utils';
+import { WorkspaceInviteModal } from '../workspaces/WorkspaceInviteModal';
 
 type Tab = 'general' | 'members' | 'invitations' | 'bans' | 'audit' | 'danger';
 
@@ -32,9 +31,6 @@ export function WorkspaceSettingsPage() {
   const [name, setName] = useState(workspace?.name ?? '');
   const [description, setDescription] = useState(workspace?.description ?? '');
   const [inviteOpen, setInviteOpen] = useState(false);
-  const [inviteEmail, setInviteEmail] = useState('');
-  const [inviteRole, setInviteRole] = useState<Role>('member');
-  const [inviteResult, setInviteResult] = useState<InvitationSummary | null>(null);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [confirmName, setConfirmName] = useState('');
   const [transferTo, setTransferTo] = useState('');
@@ -95,29 +91,6 @@ export function WorkspaceSettingsPage() {
       await queryClient.invalidateQueries({ queryKey: ['members', workspace!.id] });
     } catch (error: any) {
       toast.push(error?.problem?.detail ?? t('errors.forbidden'), { kind: 'danger' });
-    }
-  }
-
-  async function createInvite() {
-    try {
-      const response = await post<{ invitation: InvitationSummary }>(
-        `/v1/workspaces/${workspace!.id}/invitations`,
-        { email: inviteEmail.trim() || undefined, role: inviteRole },
-      );
-      setInviteResult(response.invitation);
-      setInviteEmail('');
-      await queryClient.invalidateQueries({ queryKey: ['invitations', workspace!.id] });
-      if (response.invitation.url) {
-        void navigator.clipboard.writeText(response.invitation.url);
-        toast.push(t('common.copied'), { kind: 'success' });
-      }
-    } catch (error: any) {
-      toast.push(
-        error?.code === 'invite_limit'
-          ? t('errors.inviteLimit')
-          : (error?.problem?.detail ?? t('errors.generic')),
-        { kind: 'danger' },
-      );
     }
   }
 
@@ -413,23 +386,6 @@ export function WorkspaceSettingsPage() {
           {tab === 'invitations' ? (
             <div className="card-panel">
               <h2 style={{ fontSize: 16, marginBottom: 12 }}>{t('settings.invitations')}</h2>
-              {inviteResult?.url ? (
-                <div className="alert info" style={{ marginBottom: 12 }}>
-                  <div className="spread">
-                    <span className="small">{t('settings.inviteLink')}</span>
-                    <Button
-                      size="sm"
-                      icon="copy"
-                      onClick={() => void navigator.clipboard.writeText(inviteResult.url!)}
-                    >
-                      {t('settings.copyLink')}
-                    </Button>
-                  </div>
-                  <div className="mono truncate" style={{ marginTop: 6 }}>
-                    {inviteResult.url}
-                  </div>
-                </div>
-              ) : null}
               <Button variant="primary" icon="plus" onClick={() => setInviteOpen(true)}>
                 {t('settings.createLink')}
               </Button>
@@ -578,53 +534,12 @@ export function WorkspaceSettingsPage() {
         </div>
       </div>
 
-      <Modal
+      <WorkspaceInviteModal
         open={inviteOpen}
         onClose={() => setInviteOpen(false)}
-        title={t('settings.invite')}
-        footer={
-          <>
-            <Button variant="ghost" onClick={() => setInviteOpen(false)}>
-              {t('common.cancel')}
-            </Button>
-            <Button
-              variant="primary"
-              onClick={() => void createInvite()}
-              disabled={!user?.email_verified_at}
-            >
-              {t('settings.createLink')}
-            </Button>
-          </>
-        }
-      >
-        {!user?.email_verified_at ? (
-          <div className="alert warning">{t('errors.emailUnverified')}</div>
-        ) : null}
-        <div className="stack" style={{ marginTop: 8 }}>
-          <div>
-            <label className="label" htmlFor="invite-email">
-              {t('settings.inviteEmail')}
-            </label>
-            <EmailInput id="invite-email" value={inviteEmail} onChange={setInviteEmail} />
-          </div>
-          <div>
-            <label className="label" htmlFor="invite-role">
-              {t('settings.inviteRole')}
-            </label>
-            <select
-              id="invite-role"
-              className="select"
-              value={inviteRole}
-              onChange={(event) => setInviteRole(event.target.value as Role)}
-            >
-              <option value="manager">{t('settings.manager')}</option>
-              <option value="member">{t('settings.member')}</option>
-              <option value="viewer">{t('settings.viewer')}</option>
-            </select>
-          </div>
-          <p className="caption subtle">{t('settings.inviteLink')}</p>
-        </div>
-      </Modal>
+        workspaceId={workspace!.id}
+        emailVerified={Boolean(user?.email_verified_at)}
+      />
 
       <Modal
         open={deleteOpen}

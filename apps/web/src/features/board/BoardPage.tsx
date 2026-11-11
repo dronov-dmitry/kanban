@@ -111,7 +111,9 @@ export function BoardPage() {
   const [shareOpen, setShareOpen] = useState(false);
   const [shareEmails, setShareEmails] = useState('');
   const [shareRole, setShareRole] = useState<BoardMemberRole>('viewer');
-  const [requestRoles, setRequestRoles] = useState<Record<string, 'manager' | 'worker'>>({});
+  const [requestRoles, setRequestRoles] = useState<Record<string, 'viewer' | 'manager' | 'worker'>>(
+    {},
+  );
   const [shareResult, setShareResult] = useState<{
     link: string;
     results: Array<{ email: string; status: string }>;
@@ -739,7 +741,10 @@ export function BoardPage() {
     setAddPromptOpen(false);
   }
 
-  async function approveAccessRequest(requestId: string, nextRole: 'manager' | 'worker') {
+  async function approveAccessRequest(
+    requestId: string,
+    nextRole: 'viewer' | 'manager' | 'worker',
+  ) {
     setRequestBusy(requestId);
     try {
       await post(`/v1/boards/${boardId}/access-requests/${requestId}/approve`, { role: nextRole });
@@ -1683,13 +1688,14 @@ export function BoardPage() {
                       onChange={(event) =>
                         setRequestRoles((current) => ({
                           ...current,
-                          [request.id]: event.target.value as 'manager' | 'worker',
+                          [request.id]: event.target.value as 'viewer' | 'manager' | 'worker',
                         }))
                       }
                       aria-label={t('settings.role')}
                     >
                       <option value="worker">{t('board.roleWorker')}</option>
                       <option value="manager">{t('board.roleManager')}</option>
+                      <option value="viewer">{t('settings.viewer')}</option>
                     </select>
                     <Button
                       size="sm"

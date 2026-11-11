@@ -8,6 +8,8 @@ import {
   Button,
   EmptyState,
   Icon,
+  Menu,
+  MenuItem,
   Modal,
   SkeletonBoard,
   useToast,
@@ -19,6 +21,7 @@ import { useAuthStore } from '../../lib/auth-store';
 import { useBoards, useMembers, useMyTasks, useWorkspaces } from '../../lib/queries';
 import { formatDue, LABEL_PALETTE, taskCountLabel } from '../../lib/utils';
 import { BoardActionsMenu } from '../board/BoardActionsMenu';
+import { WorkspaceInviteModal } from './WorkspaceInviteModal';
 
 const TEMPLATES: Array<{ id: BoardTemplate; icon: string }> = [
   { id: 'empty', icon: 'board' },
@@ -128,6 +131,7 @@ export function WorkspaceHomePage() {
   const queryClient = useQueryClient();
   const toast = useToast();
   const [createOpen, setCreateOpen] = useState(search.new === '1');
+  const [inviteOpen, setInviteOpen] = useState(false);
   const currentUser = useAuthStore((state) => state.user);
   const isPro = currentUser?.plan === 'pro';
   const [importing, setImporting] = useState(false);
@@ -199,7 +203,38 @@ export function WorkspaceHomePage() {
     <div className="page">
       <header className="page-header">
         <div>
-          <h1>{workspace.name}</h1>
+          <div className="row" style={{ gap: 8 }}>
+            <h1>{workspace.name}</h1>
+            {role === 'owner' || role === 'manager' ? (
+              <Menu
+                trigger={(props) => (
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    icon="more"
+                    aria-label={t('common.actions')}
+                    {...props}
+                  />
+                )}
+              >
+                <MenuItem icon="users" onClick={() => setInviteOpen(true)}>
+                  {t('board.invite')}
+                </MenuItem>
+                <MenuItem
+                  icon="settings"
+                  onClick={() =>
+                    void navigate({
+                      to: '/app/$wsSlug/settings',
+                      params: { wsSlug: workspace.slug },
+                      search: { tab: 'members' },
+                    })
+                  }
+                >
+                  {t('nav.settings')}
+                </MenuItem>
+              </Menu>
+            ) : null}
+          </div>
           <p className="muted small" style={{ marginTop: 4 }}>
             {t('workspace.boards')}: {list.length} · {t('workspace.members')}:{' '}
             {members.data?.data.length ?? workspace.member_count ?? '—'}
@@ -243,20 +278,6 @@ export function WorkspaceHomePage() {
                 {importing ? t('common.loading') : t('workspace.importBoard')}
               </Button>
             </>
-          ) : null}
-          {role === 'owner' || role === 'manager' ? (
-            <Button
-              icon="users"
-              onClick={() =>
-                void navigate({
-                  to: '/app/$wsSlug/settings',
-                  params: { wsSlug: workspace.slug },
-                  search: { tab: 'members' },
-                })
-              }
-            >
-              {t('board.invite')}
-            </Button>
           ) : null}
         </div>
       </header>
@@ -412,6 +433,14 @@ export function WorkspaceHomePage() {
               replace: true,
             });
           }}
+        />
+      ) : null}
+      {workspace ? (
+        <WorkspaceInviteModal
+          open={inviteOpen}
+          onClose={() => setInviteOpen(false)}
+          workspaceId={workspace.id}
+          emailVerified={Boolean(currentUser?.email_verified_at)}
         />
       ) : null}
     </div>
