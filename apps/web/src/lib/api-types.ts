@@ -35,6 +35,8 @@ export interface BoardAcceptanceResponse {
     workspace_id: string;
   };
   role: BoardMemberRole;
+  can_manage: boolean;
+  invite: { id: string; role: BoardMemberRole } | null;
   creator: {
     id: string;
     display_name: string | null;
@@ -54,7 +56,6 @@ export interface BoardAcceptanceResponse {
     role: Role;
     added: boolean;
   }>;
-  can_manage: boolean;
 }
 
 export interface BoardAccessRequestRow {

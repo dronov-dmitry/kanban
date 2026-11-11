@@ -127,14 +127,16 @@ export function BoardActionsMenu({
           <Button size="sm" icon="more" aria-label={t('common.actions')} {...props} />
         )}
       >
-        <MenuItem
-          icon="edit"
-          onClick={() => {
-            setSettingsOpen(true);
-          }}
-        >
-          {t('board.boardSettings')}
-        </MenuItem>
+        {canWrite ? (
+          <MenuItem
+            icon="edit"
+            onClick={() => {
+              setSettingsOpen(true);
+            }}
+          >
+            {t('board.boardSettings')}
+          </MenuItem>
+        ) : null}
         {canWrite ? (
           <MenuItem icon="tag" onClick={() => setLabelsOpen(true)}>
             {t('board.manageLabels')}
@@ -151,9 +153,11 @@ export function BoardActionsMenu({
         >
           {t('board.addToWorkspace')}
         </MenuItem>
-        <MenuItem icon="duplicate" onClick={() => void duplicateBoard()}>
-          {t('common.duplicate')}
-        </MenuItem>
+        {canWrite ? (
+          <MenuItem icon="duplicate" onClick={() => void duplicateBoard()}>
+            {t('common.duplicate')}
+          </MenuItem>
+        ) : null}
         {isPro ? (
           <>
             <MenuItem

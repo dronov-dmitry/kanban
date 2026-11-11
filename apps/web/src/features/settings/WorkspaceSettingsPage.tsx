@@ -3,6 +3,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useNavigate, useParams, useSearch } from '@tanstack/react-router';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { EmailInput } from '../../components/EmailInput';
 import { Avatar, Button, EmptyState, Icon, Modal, useToast } from '../../components/ui';
 import { useWorkspace } from '../../components/workspace-context';
 import { del, patch, post } from '../../lib/api';
@@ -604,13 +605,7 @@ export function WorkspaceSettingsPage() {
             <label className="label" htmlFor="invite-email">
               {t('settings.inviteEmail')}
             </label>
-            <input
-              id="invite-email"
-              className="input"
-              type="email"
-              value={inviteEmail}
-              onChange={(event) => setInviteEmail(event.target.value)}
-            />
+            <EmailInput id="invite-email" value={inviteEmail} onChange={setInviteEmail} />
           </div>
           <div>
             <label className="label" htmlFor="invite-role">

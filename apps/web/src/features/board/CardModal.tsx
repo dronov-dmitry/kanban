@@ -39,7 +39,15 @@ import {
 
 const PRIORITIES = ['low', 'normal', 'high', 'urgent'] as const;
 
-export function CardModal({ cardId, onClose }: { cardId: string; onClose: () => void }) {
+export function CardModal({
+  cardId,
+  onClose,
+  readOnly: readOnlyProp = false,
+}: {
+  cardId: string;
+  onClose: () => void;
+  readOnly?: boolean;
+}) {
   const { t, i18n } = useTranslation();
   const queryClient = useQueryClient();
   const toast = useToast();
@@ -123,6 +131,7 @@ export function CardModal({ cardId, onClose }: { cardId: string; onClose: () => 
   }, [title, description, card?.id]);
 
   const board = boardQuery.data;
+  const readOnly = readOnlyProp || board?.role === 'viewer';
   const lists = board?.lists ?? [];
   const allLabels = board?.labels ?? [];
   const members: Member[] = board?.members ?? [];
@@ -329,31 +338,33 @@ export function CardModal({ cardId, onClose }: { cardId: string; onClose: () => 
         </span>
       }
       headerExtra={
-        <Menu
-          trigger={(props) => (
-            <Button
-              variant="ghost"
-              size="sm"
-              icon="more"
-              aria-label={t('common.actions')}
-              {...props}
-            />
-          )}
-        >
-          <MenuItem icon="copy" onClick={copyLink}>
-            {t('card.link')}
-          </MenuItem>
-          <MenuItem icon="duplicate" onClick={() => void duplicateCard()}>
-            {t('card.duplicate')}
-          </MenuItem>
-          <MenuItem icon="archive" onClick={() => void archiveCard()}>
-            {t('card.archive')}
-          </MenuItem>
-          <div className="menu-separator" />
-          <MenuItem icon="trash" danger onClick={() => setDeleteOpen(true)}>
-            {t('card.delete')}
-          </MenuItem>
-        </Menu>
+        readOnly ? null : (
+          <Menu
+            trigger={(props) => (
+              <Button
+                variant="ghost"
+                size="sm"
+                icon="more"
+                aria-label={t('common.actions')}
+                {...props}
+              />
+            )}
+          >
+            <MenuItem icon="copy" onClick={copyLink}>
+              {t('card.link')}
+            </MenuItem>
+            <MenuItem icon="duplicate" onClick={() => void duplicateCard()}>
+              {t('card.duplicate')}
+            </MenuItem>
+            <MenuItem icon="archive" onClick={() => void archiveCard()}>
+              {t('card.archive')}
+            </MenuItem>
+            <div className="menu-separator" />
+            <MenuItem icon="trash" danger onClick={() => setDeleteOpen(true)}>
+              {t('card.delete')}
+            </MenuItem>
+          </Menu>
+        )
       }
       footer={
         <>
@@ -379,12 +390,14 @@ export function CardModal({ cardId, onClose }: { cardId: string; onClose: () => 
               className="card-modal-title"
               value={title}
               rows={2}
+              readOnly={readOnly}
               onChange={(event) => {
                 setTitle(event.target.value);
                 titleRef.current = event.target.value;
               }}
               onBlur={() => {
-                if (title.trim() && title !== card.title) void save({ title: title.trim() });
+                if (!readOnly && title.trim() && title !== card.title)
+                  void save({ title: title.trim() });
               }}
               aria-label={t('card.title')}
             />
@@ -392,16 +405,18 @@ export function CardModal({ cardId, onClose }: { cardId: string; onClose: () => 
             <div className="field-group" style={{ marginTop: 8 }}>
               <div className="spread">
                 <span className="field-label">{t('card.description')}</span>
-                <button
-                  type="button"
-                  className="btn ghost sm"
-                  onClick={() => setPreview((value) => !value)}
-                >
-                  <Icon name={preview ? 'edit' : 'eye'} size={14} />
-                  {preview ? t('card.edit') : t('card.preview')}
-                </button>
+                {readOnly ? null : (
+                  <button
+                    type="button"
+                    className="btn ghost sm"
+                    onClick={() => setPreview((value) => !value)}
+                  >
+                    <Icon name={preview ? 'edit' : 'eye'} size={14} />
+                    {preview ? t('card.edit') : t('card.preview')}
+                  </button>
+                )}
               </div>
-              {preview ? (
+              {preview || readOnly ? (
                 <div
                   className="markdown"
                   dangerouslySetInnerHTML={{
@@ -474,55 +489,61 @@ export function CardModal({ cardId, onClose }: { cardId: string; onClose: () => 
                 }
                 onToggle={(itemId, done) => void toggleChecklistItem(itemId, done)}
                 onAdd={() => void addChecklistItem(checklist.id)}
+                readOnly={readOnly}
               />
             ))}
-            <Button size="sm" icon="plus" onClick={() => void addChecklist()}>
-              {t('card.addChecklist')}
-            </Button>
+            {readOnly ? null : (
+              <Button size="sm" icon="plus" onClick={() => void addChecklist()}>
+                {t('card.addChecklist')}
+              </Button>
+            )}
 
             <section style={{ marginTop: 20 }}>
               <h3 className="field-label" style={{ marginBottom: 6 }}>
                 {t('card.attachments')} ({card.attachments.length})
               </h3>
-              <div
-                className={cn('dropzone', dragOver && 'active')}
-                onDragOver={(event) => {
-                  event.preventDefault();
-                  setDragOver(true);
-                }}
-                onDragLeave={() => setDragOver(false)}
-                onDrop={(event) => {
-                  event.preventDefault();
-                  void uploadFiles(event.dataTransfer.files);
-                }}
-                onClick={() => document.getElementById('attachment-input')?.click()}
-                role="button"
-                tabIndex={0}
-                onKeyDown={(event) => {
-                  if (event.key === 'Enter') document.getElementById('attachment-input')?.click();
-                }}
-              >
-                {uploading ? (
-                  <Spinner label={t('common.upload')} />
-                ) : (
-                  <>
-                    <Icon name="upload" size={16} /> {t('card.dropFiles')}
-                  </>
-                )}
-                <input
-                  id="attachment-input"
-                  type="file"
-                  multiple
-                  hidden
-                  onChange={(event) => {
-                    if (event.target.files) void uploadFiles(event.target.files);
+              {readOnly ? null : (
+                <div
+                  className={cn('dropzone', dragOver && 'active')}
+                  onDragOver={(event) => {
+                    event.preventDefault();
+                    setDragOver(true);
                   }}
-                />
-              </div>
+                  onDragLeave={() => setDragOver(false)}
+                  onDrop={(event) => {
+                    event.preventDefault();
+                    void uploadFiles(event.dataTransfer.files);
+                  }}
+                  onClick={() => document.getElementById('attachment-input')?.click()}
+                  role="button"
+                  tabIndex={0}
+                  onKeyDown={(event) => {
+                    if (event.key === 'Enter') document.getElementById('attachment-input')?.click();
+                  }}
+                >
+                  {uploading ? (
+                    <Spinner label={t('common.upload')} />
+                  ) : (
+                    <>
+                      <Icon name="upload" size={16} /> {t('card.dropFiles')}
+                    </>
+                  )}
+                  <input
+                    id="attachment-input"
+                    type="file"
+                    multiple
+                    hidden
+                    onChange={(event) => {
+                      if (event.target.files) void uploadFiles(event.target.files);
+                    }}
+                  />
+                </div>
+              )}
               {card.attachments.map((attachment) => (
                 <AttachmentRow
                   key={attachment.id}
                   attachment={attachment}
+                  readOnly={readOnly}
                   onDownload={() =>
                     void downloadWithAuth(
                       `/v1/attachments/${attachment.id}/download`,
@@ -553,7 +574,7 @@ export function CardModal({ cardId, onClose }: { cardId: string; onClose: () => 
                       {comment.edited_at ? (
                         <span className="caption subtle">· {t('card.edited')}</span>
                       ) : null}
-                      {comment.author_id === auth.user?.id ? (
+                      {!readOnly && comment.author_id === auth.user?.id ? (
                         <span className="row" style={{ marginLeft: 'auto', gap: 2 }}>
                           <Button
                             size="sm"
@@ -579,54 +600,56 @@ export function CardModal({ cardId, onClose }: { cardId: string; onClose: () => 
                   </div>
                 </div>
               ))}
-              <div className="comment-composer">
-                <Avatar
-                  name={auth.user?.display_name ?? '?'}
-                  src={auth.user?.avatar_url}
-                  size="sm"
-                />
-                <div className="grow stack tight">
-                  {commentPreview ? (
-                    <div
-                      className="markdown small"
-                      dangerouslySetInnerHTML={{ __html: renderMarkdown(commentText || '…') }}
-                    />
-                  ) : (
-                    <textarea
-                      className="textarea"
-                      style={{ minHeight: 72 }}
-                      placeholder={t('card.addComment')}
-                      value={commentText}
-                      onChange={(event) => setCommentText(event.target.value)}
-                      onKeyDown={(event) => {
-                        if (event.key === 'Enter' && (event.metaKey || event.ctrlKey)) {
-                          event.preventDefault();
-                          void addComment();
-                        }
-                      }}
-                    />
-                  )}
-                  <div className="row">
-                    <Button
-                      size="sm"
-                      variant="primary"
-                      onClick={() => void addComment()}
-                      disabled={!commentText.trim()}
-                    >
-                      {t('common.send')}
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      onClick={() => setCommentPreview((value) => !value)}
-                    >
-                      <Icon name={commentPreview ? 'edit' : 'eye'} size={14} />{' '}
-                      {commentPreview ? t('card.edit') : t('card.preview')}
-                    </Button>
-                    <span className="caption subtle">{t('card.commentHint')}</span>
+              {readOnly ? null : (
+                <div className="comment-composer">
+                  <Avatar
+                    name={auth.user?.display_name ?? '?'}
+                    src={auth.user?.avatar_url}
+                    size="sm"
+                  />
+                  <div className="grow stack tight">
+                    {commentPreview ? (
+                      <div
+                        className="markdown small"
+                        dangerouslySetInnerHTML={{ __html: renderMarkdown(commentText || '…') }}
+                      />
+                    ) : (
+                      <textarea
+                        className="textarea"
+                        style={{ minHeight: 72 }}
+                        placeholder={t('card.addComment')}
+                        value={commentText}
+                        onChange={(event) => setCommentText(event.target.value)}
+                        onKeyDown={(event) => {
+                          if (event.key === 'Enter' && (event.metaKey || event.ctrlKey)) {
+                            event.preventDefault();
+                            void addComment();
+                          }
+                        }}
+                      />
+                    )}
+                    <div className="row">
+                      <Button
+                        size="sm"
+                        variant="primary"
+                        onClick={() => void addComment()}
+                        disabled={!commentText.trim()}
+                      >
+                        {t('common.send')}
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => setCommentPreview((value) => !value)}
+                      >
+                        <Icon name={commentPreview ? 'edit' : 'eye'} size={14} />{' '}
+                        {commentPreview ? t('card.edit') : t('card.preview')}
+                      </Button>
+                      <span className="caption subtle">{t('card.commentHint')}</span>
+                    </div>
                   </div>
                 </div>
-              </div>
+              )}
             </section>
 
             <section style={{ marginTop: 16 }}>
@@ -669,7 +692,8 @@ export function CardModal({ cardId, onClose }: { cardId: string; onClose: () => 
                   const active = card.assignees.some(
                     (assignee) => assignee.user_id === member.user_id,
                   );
-                  const assignable = canAssignOthers || member.user_id === auth.user?.id;
+                  const assignable =
+                    !readOnly && (canAssignOthers || member.user_id === auth.user?.id);
                   return (
                     <button
                       key={member.user_id}
@@ -699,6 +723,7 @@ export function CardModal({ cardId, onClose }: { cardId: string; onClose: () => 
                       className={cn('chip', active && 'active')}
                       style={active ? { borderColor: label.color } : undefined}
                       onClick={() => void toggleLabel(label.id)}
+                      disabled={readOnly}
                     >
                       <span className="dot" style={{ background: label.color }} />
                       {label.name}
@@ -716,11 +741,12 @@ export function CardModal({ cardId, onClose }: { cardId: string; onClose: () => 
                   className="input"
                   style={{ minHeight: 32, padding: '4px 8px' }}
                   value={timestampToDateInput(card.due_date)}
+                  disabled={readOnly}
                   onChange={(event) =>
                     void save({ dueDate: dateInputToTimestamp(event.target.value) })
                   }
                 />
-                {card.due_date ? (
+                {card.due_date && !readOnly ? (
                   <Button
                     size="sm"
                     variant="ghost"
@@ -735,6 +761,7 @@ export function CardModal({ cardId, onClose }: { cardId: string; onClose: () => 
                   <input
                     type="checkbox"
                     checked={card.due_done === 1}
+                    disabled={readOnly}
                     onChange={(event) => void save({ dueDone: event.target.checked })}
                   />
                   {t('card.dueDone')}
@@ -747,6 +774,7 @@ export function CardModal({ cardId, onClose }: { cardId: string; onClose: () => 
               <select
                 className="select"
                 value={card.priority}
+                disabled={readOnly}
                 onChange={(event) => void save({ priority: event.target.value })}
               >
                 {PRIORITIES.map((priority) => (
@@ -765,6 +793,7 @@ export function CardModal({ cardId, onClose }: { cardId: string; onClose: () => 
               <select
                 className="select"
                 value={card.list_id}
+                disabled={readOnly}
                 onChange={(event) => void moveToList(event.target.value)}
               >
                 {lists.map((list) => (
@@ -836,12 +865,14 @@ function ChecklistBlock({
   onInput,
   onToggle,
   onAdd,
+  readOnly,
 }: {
   checklist: Checklist;
   input: string;
   onInput: (value: string) => void;
   onToggle: (itemId: string, done: boolean) => void;
   onAdd: () => void;
+  readOnly?: boolean;
 }) {
   const { t } = useTranslation();
   return (
@@ -857,31 +888,36 @@ function ChecklistBlock({
           <input
             type="checkbox"
             checked={item.is_done === 1}
+            disabled={readOnly}
             onChange={(event) => onToggle(item.id, event.target.checked)}
           />
           <span className="checklist-text">{item.text}</span>
         </label>
       ))}
-      <input
-        className="input"
-        style={{ minHeight: 30, marginTop: 6 }}
-        placeholder={t('card.addItem')}
-        value={input}
-        onChange={(event) => onInput(event.target.value)}
-        onKeyDown={(event) => {
-          if (event.key === 'Enter') onAdd();
-        }}
-      />
+      {readOnly ? null : (
+        <input
+          className="input"
+          style={{ minHeight: 30, marginTop: 6 }}
+          placeholder={t('card.addItem')}
+          value={input}
+          onChange={(event) => onInput(event.target.value)}
+          onKeyDown={(event) => {
+            if (event.key === 'Enter') onAdd();
+          }}
+        />
+      )}
     </div>
   );
 }
 
 function AttachmentRow({
   attachment,
+  readOnly,
   onDownload,
   onDelete,
 }: {
   attachment: Attachment;
+  readOnly?: boolean;
   onDownload: () => void;
   onDelete: () => void;
 }) {
@@ -935,13 +971,15 @@ function AttachmentRow({
         aria-label={t('common.download')}
         onClick={onDownload}
       />
-      <Button
-        size="sm"
-        variant="ghost"
-        icon="trash"
-        aria-label={t('common.delete')}
-        onClick={onDelete}
-      />
+      {readOnly ? null : (
+        <Button
+          size="sm"
+          variant="ghost"
+          icon="trash"
+          aria-label={t('common.delete')}
+          onClick={onDelete}
+        />
+      )}
     </div>
   );
 }

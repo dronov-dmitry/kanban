@@ -122,10 +122,7 @@ export function PublicBoardPage() {
               {t('common.login')}
             </a>
           ) : hasAccess ? (
-            <a
-              className="btn primary"
-              href={appHref(`/app/${data.workspace.slug}/boards/${data.board.id}`)}
-            >
+            <a className="btn primary" href={appHref(`/share/board-accept/${data.board.id}`)}>
               {t('board.openBoard')}
             </a>
           ) : request?.status === 'pending' ? (

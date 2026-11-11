@@ -198,6 +198,22 @@ export function AppShell() {
       void navigate({ to: '/join/$token', params: { token: payload.token } });
       return;
     }
+    if (notification.type === 'board.invite_declined') {
+      toast.push(t('notifications.inviteDeclined'), { kind: 'default' });
+      return;
+    }
+    if (notification.type === 'workspace.invite_declined') {
+      toast.push(t('notifications.workspaceInviteDeclined'), { kind: 'default' });
+      return;
+    }
+    if (notification.type === 'board.invite_accepted') {
+      toast.push(t('notifications.inviteAccepted'), { kind: 'success' });
+      return;
+    }
+    if (notification.type === 'workspace.invite_accepted') {
+      toast.push(t('notifications.workspaceInviteAccepted'), { kind: 'success' });
+      return;
+    }
     if (!payload.board_id) return;
     if (notification.type === 'board.shared' || notification.type === 'board.access_approved') {
       void navigate({
@@ -341,15 +357,19 @@ export function AppShell() {
                     className={cn('nav-item', params.boardId === board.id && 'active')}
                   >
                     <span className="icon" aria-hidden="true">
-                      <span
-                        style={{
-                          width: 9,
-                          height: 9,
-                          borderRadius: 3,
-                          background: board.cover ?? 'var(--color-primary)',
-                          display: 'block',
-                        }}
-                      />
+                      {board.library_origin === 'linked' ? (
+                        <Icon name="link" size={14} />
+                      ) : (
+                        <span
+                          style={{
+                            width: 9,
+                            height: 9,
+                            borderRadius: 3,
+                            background: board.cover ?? 'var(--color-primary)',
+                            display: 'block',
+                          }}
+                        />
+                      )}
                     </span>
                     <span className="grow truncate">{board.name}</span>
                     {board.is_favorite ? <Icon name="star" size={12} /> : null}
@@ -380,17 +400,32 @@ export function AppShell() {
               <div className="nav-label">{t('workspace.sharedWithMe')}</div>
               <nav className="nav" aria-label={t('workspace.sharedWithMe')}>
                 {sharedBoardList.slice(0, 8).map((board) => (
-                  <Link
-                    key={board.id}
-                    to="/app/$wsSlug/boards/$boardId"
-                    params={{ wsSlug: board.workspace_slug ?? '', boardId: board.id }}
-                    className={cn('nav-item', params.boardId === board.id && 'active')}
-                  >
-                    <span className="icon" aria-hidden="true">
-                      <Icon name="link" size={14} />
-                    </span>
-                    <span className="grow truncate">{board.name}</span>
-                  </Link>
+                  <div className="nav-row" key={board.id}>
+                    <Link
+                      to="/app/$wsSlug/boards/$boardId"
+                      params={{ wsSlug: board.workspace_slug ?? '', boardId: board.id }}
+                      className={cn('nav-item', params.boardId === board.id && 'active')}
+                    >
+                      <span className="icon" aria-hidden="true">
+                        <Icon name="link" size={14} />
+                      </span>
+                      <span className="grow truncate">{board.name}</span>
+                    </Link>
+                    <button
+                      type="button"
+                      className="nav-action"
+                      title={t('board.addToWorkspace')}
+                      aria-label={t('board.addToWorkspace')}
+                      onClick={() =>
+                        void navigate({
+                          to: '/share/board-accept/$boardId',
+                          params: { boardId: board.id },
+                        })
+                      }
+                    >
+                      <Icon name="plus" size={14} />
+                    </button>
+                  </div>
                 ))}
               </nav>
             </>
@@ -713,9 +748,17 @@ function NotificationItem({
               ? t('notifications.accessRejected')
               : notification.type === 'board.shared'
                 ? t('notifications.boardShared')
-                : notification.type === 'service.invite'
-                  ? t('notifications.serviceInvite')
-                  : notification.type;
+                : notification.type === 'board.invite_accepted'
+                  ? t('notifications.inviteAccepted')
+                  : notification.type === 'board.invite_declined'
+                    ? t('notifications.inviteDeclined')
+                    : notification.type === 'workspace.invite_accepted'
+                      ? t('notifications.workspaceInviteAccepted')
+                      : notification.type === 'workspace.invite_declined'
+                        ? t('notifications.workspaceInviteDeclined')
+                        : notification.type === 'service.invite'
+                          ? t('notifications.serviceInvite')
+                          : notification.type;
   return (
     <button
       type="button"

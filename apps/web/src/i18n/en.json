@@ -314,6 +314,12 @@
     "workspaceOwner": "Workspace",
     "linkedWorkspaces": "Also available in",
     "addToWorkspace": "Add to workspace",
+    "addToWorkspaceTitle": "Add this board to a workspace?",
+    "addToWorkspaceHint": "The board “{{board}}” was shared with you personally. Add it to “{{workspace}}” to keep it in the workspace board list.",
+    "addToWorkspaceHintPick": "The board “{{board}}” was shared with you personally. Add it to one of your workspaces or keep it in “Shared with me”.",
+    "addToWorkspaceCurrent": "Add to “{{workspace}}”",
+    "chooseWorkspace": "Choose another workspace",
+    "keepShared": "Keep in “Shared with me”",
     "onlineNow": "On the board now",
     "roleChanged": "Role updated",
     "removeMember": "Remove",
@@ -454,6 +460,10 @@
     "accessApproved": "Access approved",
     "accessRejected": "Access rejected",
     "boardShared": "Board shared with you",
+    "inviteAccepted": "Board invitation accepted",
+    "inviteDeclined": "Board invitation declined",
+    "workspaceInviteAccepted": "Workspace invitation accepted",
+    "workspaceInviteDeclined": "Workspace invitation declined",
     "serviceInvite": "Service invitation"
   },
   "settings": {
@@ -628,11 +638,21 @@
     "added": "Already added",
     "add": "Add to workspace",
     "open": "Open the board",
+    "decline": "Decline invitation",
+    "declined": "Board invitation declined",
     "noWorkspaces": "You have no workspaces where this board can be added.",
     "signIn": "Sign in to accept the board",
     "role_viewer": "View",
     "role_manager": "Edit",
     "role_worker": "Work"
+  },
+  "invite": {
+    "preview": "{{name}} invites you to the workspace “{{workspace}}”.",
+    "accept": "Accept invitation",
+    "decline": "Decline",
+    "declined": "Invitation declined",
+    "declinedTitle": "Invitation declined",
+    "declinedHint": "The sender has been notified that you declined."
   },
   "activity": {
     "created": "created the card",

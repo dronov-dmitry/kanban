@@ -20,6 +20,7 @@ export function BoardAcceptPage() {
   const queryClient = useQueryClient();
   const [selected, setSelected] = useState('');
   const [busy, setBusy] = useState(false);
+  const [declining, setDeclining] = useState(false);
   const [error, setError] = useState('');
 
   const infoQuery = useQuery({
@@ -61,6 +62,23 @@ export function BoardAcceptPage() {
       );
     } finally {
       setBusy(false);
+    }
+  }
+
+  async function decline() {
+    setDeclining(true);
+    setError('');
+    try {
+      await post(`/v1/boards/${boardId}/decline`);
+      toast.push(t('boardAccept.declined'), { kind: 'success' });
+      window.location.assign(appHref('/app'));
+    } catch (caught) {
+      setError(
+        caught instanceof ApiError
+          ? (caught.problem.detail ?? t('errors.generic'))
+          : t('errors.generic'),
+      );
+      setDeclining(false);
     }
   }
 
@@ -166,9 +184,17 @@ export function BoardAcceptPage() {
                 </Button>
               ) : null}
 
-              <a className="btn" href={openHref}>
-                {t('boardAccept.open')}
-              </a>
+              {info.invite ? (
+                <Button variant="ghost" onClick={() => void decline()} disabled={declining}>
+                  {t('boardAccept.decline')}
+                </Button>
+              ) : null}
+
+              {!info.invite ? (
+                <a className="btn" href={openHref}>
+                  {t('boardAccept.open')}
+                </a>
+              ) : null}
             </div>
           ) : null}
 

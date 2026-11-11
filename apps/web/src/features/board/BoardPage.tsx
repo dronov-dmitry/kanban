@@ -38,6 +38,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { Link, useNavigate, useParams, useSearch } from '@tanstack/react-router';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { EmailInput } from '../../components/EmailInput';
 import {
   Avatar,
   Button,
@@ -125,6 +126,8 @@ export function BoardPage() {
   const [saveViewOpen, setSaveViewOpen] = useState(false);
   const [viewName, setViewName] = useState('');
   const [online, setOnline] = useState(navigator.onLine);
+  const [addPromptOpen, setAddPromptOpen] = useState(false);
+  const [addPromptBusy, setAddPromptBusy] = useState(false);
 
   const snapshot = boardQuery.data;
   const lists = snapshot?.lists ?? [];
@@ -207,12 +210,21 @@ export function BoardPage() {
     };
   }, []);
 
+  // A board shared directly with the user can be added to the current workspace.
   useEffect(() => {
+    if (!snapshot || !currentUser || !snapshot.can_leave) return;
+    if (snapshot.linked_workspaces.length > 0) return;
+    if (localStorage.getItem(`kanban.board-add-prompt:${snapshot.board.id}`)) return;
+    setAddPromptOpen(true);
+  }, [snapshot, currentUser]);
+
+  useEffect(() => {
+    if (!snapshot || snapshot.role === 'viewer') return;
     if (search.new === '1' && lists[0]) {
       setComposerList(lists[0].id);
       go({ ...search, new: undefined }, true);
     }
-  }, [search.new, lists.length]);
+  }, [search.new, lists.length, snapshot?.role]);
 
   const realtime = useBoardRealtime(
     boardId,
@@ -301,6 +313,7 @@ export function BoardPage() {
   }
 
   function onDragStart(event: DragStartEvent) {
+    if (!canWrite) return;
     const id = String(event.active.id);
     if (id.startsWith('list:')) {
       setActiveList(lists.find((list) => list.id === id.slice(5)) ?? null);
@@ -312,6 +325,7 @@ export function BoardPage() {
   }
 
   function onDragEnd(event: DragEndEvent) {
+    if (!canWrite) return;
     setActiveCard(null);
     setActiveList(null);
     const { active, over } = event;
@@ -679,6 +693,43 @@ export function BoardPage() {
     }
   }
 
+  async function addBoardToCurrentWorkspace() {
+    if (!snapshot) return;
+    const target = workspace && workspace.id !== snapshot.workspace.id ? workspace : null;
+    if (!target) {
+      dismissAddPrompt();
+      void navigate({ to: '/share/board-accept/$boardId', params: { boardId } });
+      return;
+    }
+    setAddPromptBusy(true);
+    try {
+      await post(`/v1/boards/${boardId}/accept`, { workspaceId: target.id });
+      localStorage.setItem(`kanban.board-add-prompt:${boardId}`, '1');
+      setAddPromptOpen(false);
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['board', boardId] }),
+        queryClient.invalidateQueries({ queryKey: ['boards', target.id] }),
+        queryClient.invalidateQueries({ queryKey: ['boards', 'shared'] }),
+        queryClient.invalidateQueries({ queryKey: ['workspaces'] }),
+      ]);
+      toast.push(t('boardAccept.added'), { kind: 'success' });
+    } catch (error) {
+      toast.push(
+        error instanceof ApiError
+          ? (error.problem.detail ?? t('errors.generic'))
+          : t('errors.generic'),
+        { kind: 'danger' },
+      );
+    } finally {
+      setAddPromptBusy(false);
+    }
+  }
+
+  function dismissAddPrompt() {
+    localStorage.setItem(`kanban.board-add-prompt:${boardId}`, '1');
+    setAddPromptOpen(false);
+  }
+
   async function approveAccessRequest(requestId: string, nextRole: 'manager' | 'worker') {
     setRequestBusy(requestId);
     try {
@@ -747,6 +798,7 @@ export function BoardPage() {
       if (event.metaKey || event.ctrlKey || event.altKey) return;
       const key = event.key.toLowerCase();
       if (key === 'n') {
+        if (!canWrite) return;
         event.preventDefault();
         const listId = focusedList ?? lists[0]?.id;
         if (listId) {
@@ -776,6 +828,7 @@ export function BoardPage() {
         }
       }
       if (key === 'a') {
+        if (!canWrite) return;
         const cardId = (document.activeElement as HTMLElement | null)?.dataset.cardId;
         if (cardId) {
           event.preventDefault();
@@ -783,6 +836,7 @@ export function BoardPage() {
         }
       }
       if (key === 'd') {
+        if (!canWrite) return;
         const cardId = (document.activeElement as HTMLElement | null)?.dataset.cardId;
         if (cardId) {
           event.preventDefault();
@@ -802,7 +856,7 @@ export function BoardPage() {
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [focusedList, lists, cards, runMutation, openCard, assignMe]);
+  }, [focusedList, lists, cards, runMutation, openCard, assignMe, canWrite]);
 
   if (boardQuery.isLoading && !snapshot) return <SkeletonBoard />;
 
@@ -823,6 +877,7 @@ export function BoardPage() {
   }
 
   const board = snapshot.board;
+  const addTarget = workspace && workspace.id !== snapshot.workspace.id ? workspace : null;
   const isList = search.view === 'list';
   const visibleLists = lists.filter(
     (list) => !filters.hideEmpty || (cardsByList.get(list.id)?.length ?? 0) > 0,
@@ -1057,6 +1112,7 @@ export function BoardPage() {
                                 commentCount={commentCounts.get(card.id) ?? 0}
                                 attachmentCount={attachmentCounts.get(card.id) ?? 0}
                                 selected={search.card === card.id}
+                                canWrite={canWrite}
                                 onOpen={() => openCard(card.id)}
                               />
                             ))}
@@ -1222,7 +1278,53 @@ export function BoardPage() {
         </div>
       ) : null}
 
-      {search.card ? <CardModal cardId={search.card} onClose={closeCard} /> : null}
+      <Modal
+        open={addPromptOpen}
+        onClose={dismissAddPrompt}
+        title={t('board.addToWorkspaceTitle')}
+        footer={
+          <>
+            <Button variant="ghost" onClick={dismissAddPrompt}>
+              {t('board.keepShared')}
+            </Button>
+            <Button
+              variant="primary"
+              disabled={addPromptBusy}
+              onClick={() => void addBoardToCurrentWorkspace()}
+            >
+              {addTarget
+                ? t('board.addToWorkspaceCurrent', { workspace: addTarget.name })
+                : t('board.chooseWorkspace')}
+            </Button>
+          </>
+        }
+      >
+        <p className="small muted">
+          {addTarget
+            ? t('board.addToWorkspaceHint', {
+                board: board.name,
+                workspace: addTarget.name,
+              })
+            : t('board.addToWorkspaceHintPick', { board: board.name })}
+        </p>
+        {addTarget ? (
+          <Button
+            size="sm"
+            variant="ghost"
+            style={{ marginTop: 10 }}
+            onClick={() => {
+              dismissAddPrompt();
+              void navigate({ to: '/share/board-accept/$boardId', params: { boardId } });
+            }}
+          >
+            {t('board.chooseWorkspace')}
+          </Button>
+        ) : null}
+      </Modal>
+
+      {search.card ? (
+        <CardModal cardId={search.card} onClose={closeCard} readOnly={effectiveRole === 'viewer'} />
+      ) : null}
 
       <Modal
         open={Boolean(pendingMove)}
@@ -1495,11 +1597,11 @@ export function BoardPage() {
           <hr className="divider" />
           <div>
             <span className="label">{t('board.sendLinkTo')}</span>
-            <input
-              className="input"
+            <EmailInput
+              multiple
               placeholder="user@example.com, ..."
               value={shareEmails}
-              onChange={(event) => setShareEmails(event.target.value)}
+              onChange={setShareEmails}
               onKeyDown={(event) => {
                 if (event.key === 'Enter') void sendShareLinks();
               }}
@@ -1663,10 +1765,12 @@ function SortableCard(props: {
   commentCount: number;
   attachmentCount: number;
   selected?: boolean;
+  canWrite: boolean;
   onOpen: () => void;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: props.card.id,
+    disabled: !props.canWrite,
   });
   return (
     <div
@@ -1712,6 +1816,7 @@ function SortableColumn({
     useSortable({
       id: `list:${list.id}`,
       data: { type: 'list' },
+      disabled: !canWrite,
     });
   const over = list.wip_limit !== null && count > list.wip_limit;
   return (
@@ -1727,15 +1832,17 @@ function SortableColumn({
       }}
     >
       <div className="column-header">
-        <button
-          type="button"
-          className="drag-handle"
-          aria-label={t('common.move')}
-          {...attributes}
-          {...listeners}
-        >
-          <Icon name="drag" size={14} />
-        </button>
+        {canWrite ? (
+          <button
+            type="button"
+            className="drag-handle"
+            aria-label={t('common.move')}
+            {...attributes}
+            {...listeners}
+          >
+            <Icon name="drag" size={14} />
+          </button>
+        ) : null}
         <span className="column-title truncate" onDoubleClick={canWrite ? onRename : undefined}>
           {list.name}
         </span>

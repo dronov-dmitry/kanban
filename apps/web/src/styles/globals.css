@@ -359,6 +359,35 @@ img {
   place-items: center;
 }
 
+.nav-row {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.nav-row .nav-item {
+  flex: 1;
+  min-width: 0;
+}
+
+.nav-action {
+  display: inline-grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  flex: none;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--color-text-muted);
+  cursor: pointer;
+}
+
+.nav-action:hover {
+  background: var(--color-surface-2);
+  color: var(--color-text);
+}
+
 .main {
   display: flex;
   flex-direction: column;
@@ -621,6 +650,50 @@ img {
   resize: vertical;
   min-height: 96px;
   line-height: 1.5;
+}
+
+.email-input {
+  position: relative;
+  width: 100%;
+  min-width: 0;
+}
+
+.email-suggest {
+  position: absolute;
+  z-index: 60;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 4px;
+  max-height: 240px;
+  overflow: auto;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-2);
+}
+
+.email-suggest-item {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 1px;
+  width: 100%;
+  padding: 6px 8px;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  text-align: left;
+}
+
+.email-suggest-item:hover,
+.email-suggest-item.active {
+  background: var(--color-primary-soft);
 }
 
 .select {
