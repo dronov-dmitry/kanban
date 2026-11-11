@@ -1624,7 +1624,9 @@ export function BoardPage() {
             {board.visibility === 'public' ? t('board.publicHint') : t('board.privateHint')}
           </p>
           <div>
-            <span className="label">{t('board.shareLink')}</span>
+            <span className="label">
+              {board.visibility === 'public' ? t('board.publicLink') : t('board.privateInviteLink')}
+            </span>
             {board.visibility === 'public' ? (
               <div className="row">
                 <input
@@ -1636,6 +1638,11 @@ export function BoardPage() {
                 <Button size="sm" icon="copy" onClick={() => void copyShareLink()}>
                   {t('common.copy')}
                 </Button>
+                {!publicShareLink() && canManageBoard ? (
+                  <Button size="sm" onClick={() => void changeVisibility('public')}>
+                    {t('board.createShareLink')}
+                  </Button>
+                ) : null}
               </div>
             ) : (
               <div className="stack" style={{ gap: 6 }}>
