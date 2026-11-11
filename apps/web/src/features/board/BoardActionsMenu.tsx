@@ -253,7 +253,7 @@ function BoardSettingsDialog({
     snapshot?.can_manage_roles ??
     Boolean(currentUser && snapshot?.board.created_by === currentUser.id);
 
-  async function changeMemberRole(userId: string, role: 'assigner' | 'executor') {
+  async function changeMemberRole(userId: string, role: 'manager' | 'worker') {
     setMemberBusy(userId);
     try {
       await patch(`/v1/boards/${board.id}/members/${userId}`, { role });
@@ -449,7 +449,7 @@ function BoardSettingsDialog({
                       onChange={(event) =>
                         void changeMemberRole(
                           member.user_id,
-                          event.target.value as 'assigner' | 'executor',
+                          event.target.value as 'manager' | 'worker',
                         )
                       }
                       aria-label={t('settings.role')}
@@ -459,8 +459,8 @@ function BoardSettingsDialog({
                           {t('settings.viewer')}
                         </option>
                       ) : null}
-                      <option value="assigner">{t('board.roleAssigner')}</option>
-                      <option value="executor">{t('board.roleExecutor')}</option>
+                      <option value="manager">{t('board.roleManager')}</option>
+                      <option value="worker">{t('board.roleWorker')}</option>
                     </select>
                   ) : (
                     <span className="badge">{t(boardRoleKey(member.role))}</span>
@@ -533,11 +533,10 @@ function BoardSettingsDialog({
 
 const BOARD_ROLE_LABEL_KEYS: Record<string, string> = {
   owner: 'settings.owner',
-  manager: 'settings.manager',
   member: 'settings.member',
   viewer: 'settings.viewer',
-  assigner: 'board.roleAssigner',
-  executor: 'board.roleExecutor',
+  manager: 'board.roleManager',
+  worker: 'board.roleWorker',
 };
 
 function boardRoleKey(role: string): string {

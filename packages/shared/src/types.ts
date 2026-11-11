@@ -1,13 +1,13 @@
 import type { Priority } from './filters';
 
-export type Role = 'owner' | 'manager' | 'member' | 'assigner' | 'executor' | 'viewer';
+export type Role = 'owner' | 'manager' | 'member' | 'worker' | 'viewer';
 export type Plan = 'free' | 'pro';
 export type BoardVisibility = 'private' | 'public';
 /**
- * Board-level roles. `assigner` can hand tasks to anyone on the board,
- * `executor` can only take tasks for themselves, `viewer` is read-only.
+ * Board-level roles. `manager` can hand tasks to anyone on the board,
+ * `worker` can only take tasks for themselves, `viewer` is read-only.
  */
-export type BoardMemberRole = 'viewer' | 'assigner' | 'executor';
+export type BoardMemberRole = 'viewer' | 'manager' | 'worker';
 export type BoardTemplate = 'empty' | 'development' | 'content' | 'personal' | 'hiring' | 'sprint';
 export type ThemePreference = 'light' | 'dark' | 'system';
 export type Density = 'comfortable' | 'compact';

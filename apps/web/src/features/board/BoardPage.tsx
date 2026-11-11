@@ -55,7 +55,7 @@ import type { BoardShareLinkRow, BoardSnapshotResponse } from '../../lib/api-typ
 import { useAuthStore } from '../../lib/auth-store';
 import { useBoard, useMembers, useSavedViews } from '../../lib/queries';
 import { useBoardRealtime } from '../../lib/realtime';
-import { cn, formatDue, LIST_COLORS, PRIORITY_COLORS } from '../../lib/utils';
+import { COLUMN_COLORS, cn, formatDue, PRIORITY_COLORS } from '../../lib/utils';
 import { BoardActionsMenu } from './BoardActionsMenu';
 import { CardModal } from './CardModal';
 import { CardTile } from './CardTile';
@@ -110,7 +110,7 @@ export function BoardPage() {
   const [shareOpen, setShareOpen] = useState(false);
   const [shareEmails, setShareEmails] = useState('');
   const [shareRole, setShareRole] = useState<BoardMemberRole>('viewer');
-  const [requestRoles, setRequestRoles] = useState<Record<string, 'assigner' | 'executor'>>({});
+  const [requestRoles, setRequestRoles] = useState<Record<string, 'manager' | 'worker'>>({});
   const [shareResult, setShareResult] = useState<{
     link: string;
     results: Array<{ email: string; status: string }>;
@@ -679,7 +679,7 @@ export function BoardPage() {
     }
   }
 
-  async function approveAccessRequest(requestId: string, nextRole: 'assigner' | 'executor') {
+  async function approveAccessRequest(requestId: string, nextRole: 'manager' | 'worker') {
     setRequestBusy(requestId);
     try {
       await post(`/v1/boards/${boardId}/access-requests/${requestId}/approve`, { role: nextRole });
@@ -728,7 +728,7 @@ export function BoardPage() {
     }
     const user = currentUser;
     if (!user) return;
-    if (snapshot?.role === 'executor' && current.some((id) => id !== user.id)) {
+    if (snapshot?.role === 'worker' && current.some((id) => id !== user.id)) {
       toast.push(t('card.assigneesRestricted'), { kind: 'danger' });
       return;
     }
@@ -1013,7 +1013,7 @@ export function BoardPage() {
                       setColorEdit({
                         id: list.id,
                         name: list.name,
-                        color: list.color ?? LIST_COLORS[0]!,
+                        color: list.color ?? COLUMN_COLORS[0]!,
                       })
                     }
                     onArchive={() => setDeleteList(list)}
@@ -1318,7 +1318,7 @@ export function BoardPage() {
       <Modal
         open={Boolean(colorEdit)}
         onClose={() => setColorEdit(null)}
-        title={`${t('workspace.cover')} — ${colorEdit?.name ?? ''}`}
+        title={t('board.listColor', { name: colorEdit?.name ?? '' })}
         footer={
           <>
             <Button variant="ghost" onClick={() => setColorEdit(null)}>
@@ -1331,7 +1331,7 @@ export function BoardPage() {
         }
       >
         <div className="row wrap">
-          {LIST_COLORS.map((color) => (
+          {COLUMN_COLORS.map((color) => (
             <button
               key={color}
               type="button"
@@ -1511,8 +1511,8 @@ export function BoardPage() {
               onChange={(event) => setShareRole(event.target.value as BoardMemberRole)}
             >
               <option value="viewer">{t('board.canView')}</option>
-              <option value="assigner">{t('board.roleAssigner')}</option>
-              <option value="executor">{t('board.roleExecutor')}</option>
+              <option value="manager">{t('board.roleManager')}</option>
+              <option value="worker">{t('board.roleWorker')}</option>
             </select>
             <Button
               variant="primary"
@@ -1565,27 +1565,24 @@ export function BoardPage() {
                     <select
                       className="select"
                       style={{ width: 132, minHeight: 30 }}
-                      value={requestRoles[request.id] ?? 'executor'}
+                      value={requestRoles[request.id] ?? 'worker'}
                       onChange={(event) =>
                         setRequestRoles((current) => ({
                           ...current,
-                          [request.id]: event.target.value as 'assigner' | 'executor',
+                          [request.id]: event.target.value as 'manager' | 'worker',
                         }))
                       }
                       aria-label={t('settings.role')}
                     >
-                      <option value="executor">{t('board.roleExecutor')}</option>
-                      <option value="assigner">{t('board.roleAssigner')}</option>
+                      <option value="worker">{t('board.roleWorker')}</option>
+                      <option value="manager">{t('board.roleManager')}</option>
                     </select>
                     <Button
                       size="sm"
                       variant="primary"
                       disabled={requestBusy === request.id}
                       onClick={() =>
-                        void approveAccessRequest(
-                          request.id,
-                          requestRoles[request.id] ?? 'executor',
-                        )
+                        void approveAccessRequest(request.id, requestRoles[request.id] ?? 'worker')
                       }
                     >
                       {t('board.approve')}

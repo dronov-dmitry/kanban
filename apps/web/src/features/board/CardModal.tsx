@@ -126,7 +126,7 @@ export function CardModal({ cardId, onClose }: { cardId: string; onClose: () => 
   const lists = board?.lists ?? [];
   const allLabels = board?.labels ?? [];
   const members: Member[] = board?.members ?? [];
-  const canAssignOthers = Boolean(board && board.role !== 'executor' && board.role !== 'viewer');
+  const canAssignOthers = Boolean(board && board.role !== 'worker' && board.role !== 'viewer');
 
   async function toggleLabel(labelId: string) {
     if (!card) return;

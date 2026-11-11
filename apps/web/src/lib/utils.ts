@@ -198,3 +198,25 @@ export const LABEL_PALETTE = [
 ];
 
 export const LIST_COLORS = ['#4F46E5', '#0EA5E9', '#15803D', '#B45309', '#B91C1C', '#7C3AED'];
+
+/** Wider palette for board columns. */
+export const COLUMN_COLORS = [
+  '#4F46E5',
+  '#2563EB',
+  '#0EA5E9',
+  '#0891B2',
+  '#0D9488',
+  '#15803D',
+  '#65A30D',
+  '#CA8A04',
+  '#B45309',
+  '#EA580C',
+  '#B91C1C',
+  '#DB2777',
+  '#C026D3',
+  '#7C3AED',
+  '#64748B',
+  '#475569',
+  '#78716C',
+  '#334155',
+];

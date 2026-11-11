@@ -423,71 +423,6 @@ export function AppShell() {
               </Link>
             </nav>
           ) : null}
-
-          <div className="sidebar-footer">
-            {!online ? (
-              <span className="offline-badge">
-                <Icon name="wifi-off" size={13} />
-                {pending > 0 ? t('common.syncPending', { count: pending }) : t('common.offline')}
-              </span>
-            ) : pending > 0 ? (
-              <span className="offline-badge">
-                <Icon name="refresh" size={13} />
-                {t('common.syncPending', { count: pending })}
-              </span>
-            ) : null}
-            <Menu
-              align="left"
-              trigger={(props) => (
-                <button type="button" className="nav-item" {...props} style={{ width: '100%' }}>
-                  <Avatar
-                    name={auth.user?.display_name ?? '?'}
-                    src={auth.user?.avatar_url}
-                    size="sm"
-                  />
-                  <span className="grow truncate">{auth.user?.display_name}</span>
-                  <Icon name="chevron-down" size={13} />
-                </button>
-              )}
-            >
-              <MenuItem icon="user" onClick={() => void navigate({ to: '/app/me' })}>
-                {t('nav.profile')}
-              </MenuItem>
-              <MenuItem icon="credit-card" onClick={() => void navigate({ to: '/app/billing' })}>
-                {t('nav.billing')}
-              </MenuItem>
-              <MenuItem
-                icon={auth.settings?.theme === 'dark' ? 'sun' : 'moon'}
-                onClick={() => void toggleTheme()}
-              >
-                {t('common.theme')}
-              </MenuItem>
-              <MenuItem
-                icon="globe"
-                onClick={() => {
-                  const next = i18n.language === 'ru' ? 'en' : 'ru';
-                  setLanguage(next);
-                  void patch('/v1/me', { locale: next }).then(() => {
-                    auth.updateUser({ locale: next });
-                  });
-                }}
-              >
-                {i18n.language === 'ru' ? 'English' : 'Русский'}
-              </MenuItem>
-              {isStaff ? (
-                <MenuItem icon="shield" onClick={() => void navigate({ to: '/app/admin' })}>
-                  {t('nav.admin')}
-                </MenuItem>
-              ) : null}
-              <MenuItem icon="board" onClick={() => void navigate({ to: '/about' })}>
-                {t('nav.about')}
-              </MenuItem>
-              <div className="menu-separator" />
-              <MenuItem icon="logout" onClick={() => void logout()}>
-                {t('common.logout')}
-              </MenuItem>
-            </Menu>
-          </div>
         </aside>
 
         <div className="main">
@@ -608,11 +543,33 @@ export function AppShell() {
                 <MenuItem icon="key" onClick={() => void navigate({ to: '/app/me' })}>
                   {t('settings.changePassword')}
                 </MenuItem>
+                <MenuItem
+                  icon={auth.settings?.theme === 'dark' ? 'sun' : 'moon'}
+                  onClick={() => void toggleTheme()}
+                >
+                  {t('common.theme')}
+                </MenuItem>
+                <MenuItem
+                  icon="globe"
+                  onClick={() => {
+                    const next = i18n.language === 'ru' ? 'en' : 'ru';
+                    setLanguage(next);
+                    void patch('/v1/me', { locale: next }).then(() => {
+                      auth.updateUser({ locale: next });
+                    });
+                  }}
+                >
+                  {i18n.language === 'ru' ? 'English' : 'Русский'}
+                </MenuItem>
                 {isStaff ? (
                   <MenuItem icon="shield" onClick={() => void navigate({ to: '/app/admin' })}>
                     {t('nav.admin')}
                   </MenuItem>
                 ) : null}
+                <MenuItem icon="board" onClick={() => void navigate({ to: '/about' })}>
+                  {t('nav.about')}
+                </MenuItem>
+                <div className="menu-separator" />
                 <MenuItem icon="logout" onClick={() => void logout()}>
                   {t('common.logout')}
                 </MenuItem>
