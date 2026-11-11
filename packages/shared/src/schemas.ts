@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
 export const localeSchema = z.enum(['ru', 'en']);
-export const roleSchema = z.enum(['owner', 'admin', 'member', 'viewer']);
+export const roleSchema = z.enum(['owner', 'manager', 'member', 'viewer']);
 export const prioritySchema = z.enum(['low', 'normal', 'high', 'urgent']);
 export const templateSchema = z.enum([
   'empty',
@@ -52,10 +52,10 @@ export const workspacePatchSchema = z.object({
 
 export const inviteCreateSchema = z.object({
   email: emailSchema.optional(),
-  role: z.enum(['admin', 'member', 'viewer']).default('member'),
+  role: z.enum(['manager', 'member', 'viewer']).default('member'),
 });
 
-export const memberRoleSchema = z.object({ role: z.enum(['admin', 'member', 'viewer']) });
+export const memberRoleSchema = z.object({ role: z.enum(['manager', 'member', 'viewer']) });
 
 export const boardCreateSchema = z.object({
   name: z.string().trim().min(1).max(120),
@@ -67,6 +67,12 @@ export const boardCreateSchema = z.object({
 
 export const boardDuplicateSchema = z.object({
   locale: localeSchema.optional(),
+  workspaceId: z.string().trim().min(1).max(64).optional(),
+});
+
+/** A received board can be linked into any workspace the user belongs to. */
+export const boardWorkspaceAcceptSchema = z.object({
+  workspaceId: z.string().trim().min(1).max(64),
 });
 
 export const cardDuplicateSchema = z.object({
@@ -74,7 +80,9 @@ export const cardDuplicateSchema = z.object({
 });
 
 export const boardVisibilitySchema = z.enum(['private', 'public']);
-export const boardMemberRoleSchema = z.enum(['viewer', 'member']);
+export const boardMemberRoleSchema = z.enum(['viewer', 'assigner', 'executor']);
+/** Roles the board owner can pick when resolving a request or editing a member. */
+export const boardMemberAssignableRoleSchema = z.enum(['assigner', 'executor']);
 
 export const boardPatchSchema = z.object({
   name: z.string().trim().min(1).max(120).optional(),
@@ -91,7 +99,11 @@ export const boardAccessRequestSchema = z.object({
 });
 
 export const boardAccessDecisionSchema = z.object({
-  role: boardMemberRoleSchema.default('member'),
+  role: boardMemberRoleSchema.default('executor'),
+});
+
+export const boardMemberRoleChangeSchema = z.object({
+  role: boardMemberAssignableRoleSchema,
 });
 
 export const boardShareSchema = z.object({
@@ -113,7 +125,7 @@ export const banCreateSchema = z.object({
 
 export const adminSubscriptionSchema = z.object({
   plan: z.enum(['free', 'pro']),
-  /** Paid period in days. Omit for a PRO plan without an expiry date. */
+  /** Kept for backward compatibility; admin-granted PRO never expires. */
   periodDays: z.number().int().min(1).max(3650).optional(),
 });
 

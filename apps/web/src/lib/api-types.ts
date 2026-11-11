@@ -1,6 +1,7 @@
 import type {
   ActivityEvent,
   Board,
+  BoardMemberRole,
   Card,
   CardDetail,
   Member,
@@ -19,6 +20,41 @@ export interface BoardSummary extends Board {
   card_count?: number;
   workspace_name?: string;
   workspace_slug?: string;
+  /** `linked` means the board was shared into this workspace from another one. */
+  library_origin?: 'native' | 'linked';
+  origin_workspace_name?: string;
+  origin_workspace_slug?: string;
+}
+
+export interface BoardAcceptanceResponse {
+  board: {
+    id: string;
+    name: string;
+    description: string | null;
+    cover: string | null;
+    workspace_id: string;
+  };
+  role: BoardMemberRole;
+  creator: {
+    id: string;
+    display_name: string | null;
+    avatar_url: string | null;
+  };
+  workspace: {
+    id: string;
+    name: string;
+    slug: string;
+    created_by: string;
+    owner_name: string | null;
+  } | null;
+  workspaces: Array<{
+    id: string;
+    name: string;
+    slug: string;
+    role: Role;
+    added: boolean;
+  }>;
+  can_manage: boolean;
 }
 
 export interface BoardAccessRequestRow {
@@ -36,7 +72,7 @@ export interface BoardAccessRequestRow {
 
 export interface BoardShareLinkRow {
   id: string;
-  role: 'viewer' | 'member';
+  role: BoardMemberRole;
   expires_at: number | null;
   created_at: number;
   url: string;
@@ -44,7 +80,7 @@ export interface BoardShareLinkRow {
 
 export interface BoardShareLinkInfo {
   valid: boolean;
-  role: 'viewer' | 'member';
+  role: BoardMemberRole;
   expires_at: number | null;
   inviter_name: string | null;
   board: {
@@ -70,7 +106,25 @@ export interface BoardSnapshotResponse {
   board_members: Member[];
   access_requests: BoardAccessRequestRow[];
   can_manage: boolean;
-  workspace: { id: string; name: string; slug: string };
+  can_manage_roles: boolean;
+  workspace: {
+    id: string;
+    name: string;
+    slug: string;
+    created_by: string;
+    owner_name: string | null;
+  };
+  board_owner: {
+    id: string;
+    display_name: string;
+    avatar_url: string | null;
+  } | null;
+  linked_workspaces: Array<{
+    id: string;
+    name: string;
+    slug: string;
+    role: BoardMemberRole;
+  }>;
   role: Role;
 }
 

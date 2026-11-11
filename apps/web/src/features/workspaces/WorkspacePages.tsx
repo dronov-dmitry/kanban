@@ -1,7 +1,7 @@
 import type { BoardTemplate } from '@kanban/shared';
 import { useQueryClient } from '@tanstack/react-query';
 import { Link, useNavigate, useSearch } from '@tanstack/react-router';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   Avatar,
@@ -15,6 +15,7 @@ import {
 import { useWorkspace } from '../../components/workspace-context';
 import { patch, post } from '../../lib/api';
 import type { BoardSummary, WorkspaceSummary } from '../../lib/api-types';
+import { useAuthStore } from '../../lib/auth-store';
 import { useBoards, useMembers, useMyTasks, useWorkspaces } from '../../lib/queries';
 import { formatDue, LABEL_PALETTE, taskCountLabel } from '../../lib/utils';
 
@@ -54,8 +55,13 @@ export function WorkspaceRedirectPage() {
       });
       await queryClient.invalidateQueries({ queryKey: ['workspaces'] });
       await navigate({ to: '/app/$wsSlug', params: { wsSlug: response.workspace.slug } });
-    } catch {
-      toast.push(t('errors.generic'), { kind: 'danger' });
+    } catch (error: any) {
+      toast.push(
+        error?.code === 'workspace_limit'
+          ? t('errors.workspaceLimit')
+          : (error?.problem?.detail ?? t('errors.generic')),
+        { kind: 'danger' },
+      );
     } finally {
       setBusy(false);
     }
@@ -119,7 +125,12 @@ export function WorkspaceHomePage() {
   const search = useSearch({ strict: false }) as { new?: string };
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const toast = useToast();
   const [createOpen, setCreateOpen] = useState(search.new === '1');
+  const currentUser = useAuthStore((state) => state.user);
+  const isPro = currentUser?.plan === 'pro';
+  const [importing, setImporting] = useState(false);
+  const importRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (search.new === '1') setCreateOpen(true);
@@ -147,11 +158,40 @@ export function WorkspaceHomePage() {
 
   const list = boards.data?.data ?? contextBoards;
   const myOpen = (myTasks.data?.data ?? []).filter((card) => card.due_date !== null);
-  const canCreate = role === 'owner' || role === 'admin' || role === 'member';
+  const canCreate = role === 'owner' || role === 'manager' || role === 'member';
 
   async function toggleFavorite(board: BoardSummary) {
     await patch(`/v1/boards/${board.id}`, { isFavorite: !board.is_favorite });
     await queryClient.invalidateQueries({ queryKey: ['boards', workspace?.id] });
+  }
+
+  async function importBoardFile(file: File) {
+    if (!workspace) return;
+    setImporting(true);
+    try {
+      const snapshot = JSON.parse(await file.text());
+      const response = await post<{ board: { id: string } }>(
+        `/v1/workspaces/${workspace.id}/boards/import`,
+        snapshot,
+      );
+      await queryClient.invalidateQueries({ queryKey: ['boards', workspace.id] });
+      toast.push(t('workspace.importDone'), { kind: 'success' });
+      await navigate({
+        to: '/app/$wsSlug/boards/$boardId',
+        params: { wsSlug: workspace.slug, boardId: response.board.id },
+      });
+    } catch (error: any) {
+      const message =
+        error?.code === 'pro_required'
+          ? t('errors.proRequired')
+          : error?.code === 'invalid_import' || error instanceof SyntaxError
+            ? t('errors.importInvalid')
+            : (error?.problem?.detail ?? t('errors.importFailed'));
+      toast.push(message, { kind: 'danger' });
+    } finally {
+      setImporting(false);
+      if (importRef.current) importRef.current.value = '';
+    }
   }
 
   return (
@@ -181,7 +221,24 @@ export function WorkspaceHomePage() {
               {t('workspace.newBoard')}
             </Button>
           ) : null}
-          {role === 'owner' || role === 'admin' ? (
+          {canCreate && isPro ? (
+            <>
+              <input
+                ref={importRef}
+                type="file"
+                accept=".json,application/json"
+                hidden
+                onChange={(event) => {
+                  const file = event.target.files?.[0];
+                  if (file) void importBoardFile(file);
+                }}
+              />
+              <Button icon="upload" disabled={importing} onClick={() => importRef.current?.click()}>
+                {importing ? t('common.loading') : t('workspace.importBoard')}
+              </Button>
+            </>
+          ) : null}
+          {role === 'owner' || role === 'manager' ? (
             <Button
               icon="users"
               onClick={() =>
@@ -280,6 +337,13 @@ export function WorkspaceHomePage() {
               {board.description ? (
                 <span className="small muted clamp-2">{board.description}</span>
               ) : null}
+              {board.library_origin === 'linked' ? (
+                <span className="badge info">
+                  {t('workspace.linkedBoard', {
+                    workspace: board.origin_workspace_name ?? '—',
+                  })}
+                </span>
+              ) : null}
               <span className="meta">
                 <span className="row" style={{ gap: 4 }}>
                   <Icon name="list" size={13} /> {board.card_count ?? 0}
@@ -372,8 +436,13 @@ function CreateBoardModal({
         to: '/app/$wsSlug/boards/$boardId',
         params: { wsSlug: workspaceSlug, boardId: response.board.id },
       });
-    } catch {
-      toast.push(t('errors.generic'), { kind: 'danger' });
+    } catch (error: any) {
+      toast.push(
+        error?.code === 'board_limit'
+          ? t('errors.boardLimit')
+          : (error?.problem?.detail ?? t('errors.generic')),
+        { kind: 'danger' },
+      );
     } finally {
       setBusy(false);
     }

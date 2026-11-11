@@ -32,9 +32,7 @@ export function BoardInvitePage() {
       `/v1/public/board-links/${token}/accept`,
     )
       .then((response) => {
-        window.location.assign(
-          appHref(`/app/${response.workspace_slug}/boards/${response.board_id}`),
-        );
+        window.location.assign(appHref(`/share/board-accept/${response.board_id}`));
       })
       .catch((caught) => {
         setError(
@@ -77,7 +75,7 @@ export function BoardInvitePage() {
                 </span>
               </div>
               <span className="badge info" style={{ marginTop: 8 }}>
-                {info.role === 'member' ? t('board.canEdit') : t('board.canView')}
+                {info.role === 'viewer' ? t('board.canView') : t('board.canEdit')}
               </span>
             </>
           ) : null}

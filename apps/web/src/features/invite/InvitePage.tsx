@@ -25,7 +25,11 @@ export function InvitePage() {
         setState('success');
       })
       .catch((caught: any) => {
-        setError(caught?.problem?.detail ?? t('errors.token'));
+        setError(
+          caught?.code === 'workspace_join_limit'
+            ? t('errors.workspaceJoinLimit')
+            : (caught?.problem?.detail ?? t('errors.token')),
+        );
         setState('error');
       });
   }, [auth.user, token, navigate, t]);

@@ -100,10 +100,12 @@ export function BillingPage() {
                 {isPro ? t('billing.planPro') : t('billing.planFree')}
               </div>
               <div className="caption subtle">
-                {isPro && periodEnd
-                  ? t('billing.validUntil', {
-                      date: formatDateTime(periodEnd, i18n.language),
-                    })
+                {isPro
+                  ? periodEnd
+                    ? t('billing.validUntil', {
+                        date: formatDateTime(periodEnd, i18n.language),
+                      })
+                    : t('billing.proForever')
                   : expired && periodEnd
                     ? t('billing.expired', {
                         date: formatDateTime(periodEnd, i18n.language),

@@ -23,9 +23,9 @@ export function WorkspaceSettingsPage() {
   const { workspace, role } = useWorkspace();
   const user = useAuthStore((state) => state.user);
   const members = useMembers(workspace?.id);
-  const invitations = useInvitations(workspace?.id, role === 'owner' || role === 'admin');
-  const audit = useAudit(workspace?.id, role === 'owner' || role === 'admin');
-  const bans = useWorkspaceBans(workspace?.id, role === 'owner' || role === 'admin');
+  const invitations = useInvitations(workspace?.id, role === 'owner' || role === 'manager');
+  const audit = useAudit(workspace?.id, role === 'owner' || role === 'manager');
+  const bans = useWorkspaceBans(workspace?.id, role === 'owner' || role === 'manager');
 
   const [tab, setTab] = useState<Tab>((search.tab as Tab) || 'general');
   const [name, setName] = useState(workspace?.name ?? '');
@@ -51,15 +51,15 @@ export function WorkspaceSettingsPage() {
     );
   }
 
-  const isAdmin = role === 'owner' || role === 'admin';
+  const isManager = role === 'owner' || role === 'manager';
   const isOwner = role === 'owner';
 
   const tabs: Array<{ id: Tab; label: string; roles?: Role[] }> = [
     { id: 'general', label: t('settings.general') },
     { id: 'members', label: t('settings.members') },
-    { id: 'invitations', label: t('settings.invitations'), roles: ['owner', 'admin'] },
-    { id: 'bans', label: t('settings.bans'), roles: ['owner', 'admin'] },
-    { id: 'audit', label: t('settings.audit'), roles: ['owner', 'admin'] },
+    { id: 'invitations', label: t('settings.invitations'), roles: ['owner', 'manager'] },
+    { id: 'bans', label: t('settings.bans'), roles: ['owner', 'manager'] },
+    { id: 'audit', label: t('settings.audit'), roles: ['owner', 'manager'] },
     { id: 'danger', label: t('settings.danger') },
   ];
 
@@ -106,7 +106,12 @@ export function WorkspaceSettingsPage() {
         toast.push(t('common.copied'), { kind: 'success' });
       }
     } catch (error: any) {
-      toast.push(error?.problem?.detail ?? t('errors.generic'), { kind: 'danger' });
+      toast.push(
+        error?.code === 'invite_limit'
+          ? t('errors.inviteLimit')
+          : (error?.problem?.detail ?? t('errors.generic')),
+        { kind: 'danger' },
+      );
     }
   }
 
@@ -232,7 +237,14 @@ export function WorkspaceSettingsPage() {
                 </Button>
               </div>
               <hr className="divider" />
-              <div className="spread small">
+              <div className="spread small" style={{ marginTop: 8 }}>
+                <span className="muted">{t('settings.workspaceOwner')}</span>
+                <span className="small strong">
+                  {members.data?.data.find((member) => member.role === 'owner')?.display_name ??
+                    '—'}
+                </span>
+              </div>
+              <div className="spread small" style={{ marginTop: 8 }}>
                 <span className="muted">{t('settings.role')}</span>
                 <span className="badge primary">{t(`settings.${role}`)}</span>
               </div>
@@ -251,7 +263,7 @@ export function WorkspaceSettingsPage() {
             <div className="card-panel">
               <div className="spread" style={{ marginBottom: 8 }}>
                 <h2 style={{ fontSize: 16 }}>{t('settings.members')}</h2>
-                {isAdmin ? (
+                {isManager ? (
                   <Button
                     variant="primary"
                     size="sm"
@@ -272,7 +284,7 @@ export function WorkspaceSettingsPage() {
                     </div>
                     <div className="caption subtle truncate">{member.email}</div>
                   </div>
-                  {isAdmin && member.role !== 'owner' && member.user_id !== user?.id ? (
+                  {isManager && member.role !== 'owner' && member.user_id !== user?.id ? (
                     <select
                       className="select"
                       style={{ width: 140, minHeight: 32, padding: '4px 26px 4px 8px' }}
@@ -280,16 +292,16 @@ export function WorkspaceSettingsPage() {
                       onChange={(event) =>
                         void changeRole(member.user_id, event.target.value as Role)
                       }
-                      disabled={role === 'admin' && member.role === 'admin'}
+                      disabled={role === 'manager' && member.role === 'manager'}
                     >
-                      <option value="admin">{t('settings.admin')}</option>
+                      <option value="manager">{t('settings.manager')}</option>
                       <option value="member">{t('settings.member')}</option>
                       <option value="viewer">{t('settings.viewer')}</option>
                     </select>
                   ) : (
                     <span className="badge">{t(`settings.${member.role}`)}</span>
                   )}
-                  {isAdmin && member.role !== 'owner' && member.user_id !== user?.id ? (
+                  {isManager && member.role !== 'owner' && member.user_id !== user?.id ? (
                     <Button
                       size="sm"
                       variant="ghost"
@@ -444,6 +456,11 @@ export function WorkspaceSettingsPage() {
           {tab === 'audit' ? (
             <div className="card-panel">
               <h2 style={{ fontSize: 16, marginBottom: 8 }}>{t('settings.audit')}</h2>
+              {user?.plan !== 'pro' ? (
+                <p className="caption subtle" style={{ marginBottom: 8 }}>
+                  {t('settings.auditFreeHint')}
+                </p>
+              ) : null}
               {(audit.data?.data ?? []).length === 0 ? (
                 <p className="small subtle">{t('settings.auditEmpty')}</p>
               ) : (
@@ -537,7 +554,7 @@ export function WorkspaceSettingsPage() {
               value={inviteRole}
               onChange={(event) => setInviteRole(event.target.value as Role)}
             >
-              <option value="admin">{t('settings.admin')}</option>
+              <option value="manager">{t('settings.manager')}</option>
               <option value="member">{t('settings.member')}</option>
               <option value="viewer">{t('settings.viewer')}</option>
             </select>

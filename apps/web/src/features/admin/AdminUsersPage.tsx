@@ -174,10 +174,14 @@ export function AdminUsersPage() {
                       {t('admin.joined')}: {formatDateTime(userRow.created_at, i18n.language)} ·{' '}
                       {t('admin.workspaces')}: {userRow.workspace_count}
                     </div>
-                    {userRow.is_pro && userRow.current_period_end ? (
+                    {userRow.is_pro ? (
                       <div className="caption subtle">
-                        {t('admin.proUntil')}:{' '}
-                        {formatDateTime(userRow.current_period_end, i18n.language)}
+                        {userRow.current_period_end
+                          ? `${t('admin.proUntil')}: ${formatDateTime(
+                              userRow.current_period_end,
+                              i18n.language,
+                            )}`
+                          : t('admin.proForever')}
                       </div>
                     ) : null}
                     {ban?.reason ? (

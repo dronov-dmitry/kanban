@@ -126,6 +126,7 @@ export function CardModal({ cardId, onClose }: { cardId: string; onClose: () => 
   const lists = board?.lists ?? [];
   const allLabels = board?.labels ?? [];
   const members: Member[] = board?.members ?? [];
+  const canAssignOthers = Boolean(board && board.role !== 'executor' && board.role !== 'viewer');
 
   async function toggleLabel(labelId: string) {
     if (!card) return;
@@ -217,10 +218,11 @@ export function CardModal({ cardId, onClose }: { cardId: string; onClose: () => 
   async function uploadFiles(files: FileList | File[]) {
     if (!card) return;
     setUploading(true);
+    const maxUploadMb = auth.user?.plan === 'pro' ? 50 : 10;
     try {
       for (const file of Array.from(files)) {
-        if (file.size > 10 * 1024 * 1024) {
-          toast.push(t('errors.fileTooLarge'), { kind: 'danger' });
+        if (file.size > maxUploadMb * 1024 * 1024) {
+          toast.push(t('errors.fileTooLarge', { size: maxUploadMb }), { kind: 'danger' });
           continue;
         }
         await uploadAttachment(card.id, file);
@@ -230,7 +232,11 @@ export function CardModal({ cardId, onClose }: { cardId: string; onClose: () => 
     } catch (error) {
       toast.push(
         error instanceof ApiError
-          ? (error.problem.detail ?? t('errors.upload'))
+          ? error.code === 'storage_limit'
+            ? t('errors.storageLimit')
+            : error.code === 'pro_required'
+              ? t('errors.proRequired')
+              : (error.problem.detail ?? t('errors.upload'))
           : t('errors.upload'),
         {
           kind: 'danger',
@@ -663,12 +669,15 @@ export function CardModal({ cardId, onClose }: { cardId: string; onClose: () => 
                   const active = card.assignees.some(
                     (assignee) => assignee.user_id === member.user_id,
                   );
+                  const assignable = canAssignOthers || member.user_id === auth.user?.id;
                   return (
                     <button
                       key={member.user_id}
                       type="button"
                       className={cn('avatar-option', active && 'active')}
                       onClick={() => void toggleAssignee(member.user_id)}
+                      disabled={!assignable}
+                      title={assignable ? undefined : t('card.assigneesRestricted')}
                     >
                       <Avatar name={member.display_name} src={member.avatar_url} size="sm" />
                       {member.display_name}

@@ -20,6 +20,7 @@ import {
 import { CSS } from '@dnd-kit/utilities';
 import {
   type BoardList,
+  type BoardMemberRole,
   type BoardVisibility,
   type Card,
   type CardLabel,
@@ -28,8 +29,8 @@ import {
   EMPTY_FILTERS,
   type FilterState,
   keyBetween,
+  type Member,
   matchesFilters,
-  type PresenceUser,
   parseFilters,
   type RealtimeEvent,
   serializeFilters,
@@ -94,6 +95,7 @@ export function BoardPage() {
   const membersQuery = useMembers(workspace?.id);
   const viewsQuery = useSavedViews(workspace?.id);
   const currentUser = useAuthStore((state) => state.user);
+  const isPro = currentUser?.plan === 'pro';
   const searchRef = useRef(search);
   searchRef.current = search;
   const lastFilterString = useRef(serializeFilters(parseFilters(search.f)));
@@ -122,7 +124,11 @@ export function BoardPage() {
   const [settingsVisibility, setSettingsVisibility] = useState<BoardVisibility>('private');
   const [shareOpen, setShareOpen] = useState(false);
   const [shareEmails, setShareEmails] = useState('');
-  const [shareRole, setShareRole] = useState<'viewer' | 'member'>('viewer');
+  const [shareRole, setShareRole] = useState<BoardMemberRole>('viewer');
+  const [membersOpen, setMembersOpen] = useState(false);
+  const [memberToRemove, setMemberToRemove] = useState<Member | null>(null);
+  const [requestRoles, setRequestRoles] = useState<Record<string, 'assigner' | 'executor'>>({});
+  const [memberBusy, setMemberBusy] = useState<string | null>(null);
   const [shareResult, setShareResult] = useState<{
     link: string;
     results: Array<{ email: string; status: string }>;
@@ -142,7 +148,7 @@ export function BoardPage() {
   const lists = snapshot?.lists ?? [];
   const cards = snapshot?.cards ?? [];
   const labels = snapshot?.labels ?? [];
-  const members = membersQuery.data?.data ?? snapshot?.members ?? [];
+  const members = snapshot?.members ?? membersQuery.data?.data ?? [];
   const labelIdsByCard = useMemo(
     () => groupIds(snapshot?.card_labels ?? [], 'card_id', 'label_id'),
     [snapshot],
@@ -249,11 +255,18 @@ export function BoardPage() {
 
   const activeFilters = countActiveFilters(filters);
   const effectiveRole = snapshot?.role ?? role;
-  const canWrite =
-    effectiveRole === 'owner' || effectiveRole === 'admin' || effectiveRole === 'member';
+  const canWrite = effectiveRole !== 'viewer';
   const canManageBoard =
     snapshot?.can_manage ??
     Boolean(snapshot && currentUser && snapshot.board.created_by === currentUser.id);
+  const canManageRoles =
+    snapshot?.can_manage_roles ??
+    Boolean(snapshot && currentUser && snapshot.board.created_by === currentUser.id);
+  const boardMemberRows = snapshot?.board_members ?? [];
+  const onlineIds = useMemo(
+    () => new Set(realtime.presence.map((user) => user.id)),
+    [realtime.presence],
+  );
   const accessRequests = snapshot?.access_requests ?? [];
 
   function go(next: BoardSearch, replace = false) {
@@ -297,7 +310,11 @@ export function BoardPage() {
       await queryClient.invalidateQueries({ queryKey: ['board', boardId] });
       toast.push(
         error instanceof ApiError
-          ? (error.problem.detail ?? t('errors.generic'))
+          ? error.code === 'board_limit'
+            ? t('errors.boardLimit')
+            : error.code === 'card_limit'
+              ? t('errors.cardLimit')
+              : (error.problem.detail ?? t('errors.generic'))
           : t('errors.generic'),
         {
           kind: 'danger',
@@ -476,7 +493,9 @@ export function BoardPage() {
       });
       toast.push(
         error instanceof ApiError
-          ? (error.problem.detail ?? t('errors.generic'))
+          ? error.code === 'card_limit'
+            ? t('errors.cardLimit')
+            : (error.problem.detail ?? t('errors.generic'))
           : t('errors.generic'),
         {
           kind: 'danger',
@@ -587,6 +606,7 @@ export function BoardPage() {
     try {
       const response = await post<{ board_id: string }>(`/v1/boards/${boardId}/duplicate`, {
         locale: i18n.language === 'en' ? 'en' : 'ru',
+        workspaceId: workspace?.id,
       });
       await queryClient.invalidateQueries({ queryKey: ['boards', workspace?.id] });
       await navigate({
@@ -612,7 +632,9 @@ export function BoardPage() {
     } catch (error) {
       toast.push(
         error instanceof ApiError
-          ? (error.problem.detail ?? t('errors.generic'))
+          ? error.code === 'pro_required'
+            ? t('errors.coverPro')
+            : (error.problem.detail ?? t('errors.generic'))
           : t('errors.generic'),
         { kind: 'danger' },
       );
@@ -750,11 +772,16 @@ export function BoardPage() {
     }
   }
 
-  async function approveAccessRequest(requestId: string, nextRole: 'viewer' | 'member') {
+  async function approveAccessRequest(requestId: string, nextRole: 'assigner' | 'executor') {
     setRequestBusy(requestId);
     try {
       await post(`/v1/boards/${boardId}/access-requests/${requestId}/approve`, { role: nextRole });
       await queryClient.invalidateQueries({ queryKey: ['board', boardId] });
+      setRequestRoles((current) => {
+        const next = { ...current };
+        delete next[requestId];
+        return next;
+      });
       toast.push(t('board.accessApproved'), { kind: 'success' });
     } catch (error) {
       toast.push(
@@ -765,6 +792,43 @@ export function BoardPage() {
       );
     } finally {
       setRequestBusy(null);
+    }
+  }
+
+  async function changeMemberRole(userId: string, nextRole: 'assigner' | 'executor') {
+    setMemberBusy(userId);
+    try {
+      await patch(`/v1/boards/${boardId}/members/${userId}`, { role: nextRole });
+      await queryClient.invalidateQueries({ queryKey: ['board', boardId] });
+      toast.push(t('board.roleChanged'), { kind: 'success' });
+    } catch (error) {
+      toast.push(
+        error instanceof ApiError
+          ? (error.problem.detail ?? t('errors.generic'))
+          : t('errors.generic'),
+        { kind: 'danger' },
+      );
+    } finally {
+      setMemberBusy(null);
+    }
+  }
+
+  async function removeMember(member: Member) {
+    setMemberBusy(member.user_id);
+    try {
+      await del(`/v1/boards/${boardId}/members/${member.user_id}`);
+      await queryClient.invalidateQueries({ queryKey: ['board', boardId] });
+      setMemberToRemove(null);
+      toast.push(t('board.memberRemoved'), { kind: 'success' });
+    } catch (error) {
+      toast.push(
+        error instanceof ApiError
+          ? (error.problem.detail ?? t('errors.generic'))
+          : t('errors.generic'),
+        { kind: 'danger' },
+      );
+    } finally {
+      setMemberBusy(null);
     }
   }
 
@@ -794,6 +858,10 @@ export function BoardPage() {
     }
     const user = currentUser;
     if (!user) return;
+    if (snapshot?.role === 'executor' && current.some((id) => id !== user.id)) {
+      toast.push(t('card.assigneesRestricted'), { kind: 'danger' });
+      return;
+    }
     const next = current.includes(user.id) ? current : [...current, user.id];
     await runMutation(() => patch(`/v1/cards/${cardId}`, { assigneeIds: next }), {
       rollback: false,
@@ -941,7 +1009,25 @@ export function BoardPage() {
         </div>
 
         <div className="topbar-right">
-          {realtime.presence.length > 0 ? <Presence users={realtime.presence} /> : null}
+          {members.length > 0 ? (
+            <button
+              type="button"
+              className="avatar-stack avatar-stack-button"
+              onClick={() => setMembersOpen(true)}
+              title={t('board.viewMembers', { count: members.length })}
+              aria-label={t('board.viewMembers', { count: members.length })}
+            >
+              {members.slice(0, 4).map((member) => (
+                <Avatar
+                  key={member.user_id}
+                  name={member.display_name}
+                  src={member.avatar_url}
+                  size="sm"
+                />
+              ))}
+              {members.length > 4 ? <span className="avatar sm">+{members.length - 4}</span> : null}
+            </button>
+          ) : null}
           <span
             title={realtime.connected ? t('common.online') : t('common.offline')}
             style={{
@@ -951,14 +1037,16 @@ export function BoardPage() {
               background: realtime.connected ? 'var(--color-success)' : 'var(--color-warning)',
             }}
           />
-          <Button size="sm" icon="user" onClick={openShare}>
-            <span className="hide-mobile">{t('board.share')}</span>
-            {accessRequests.length > 0 ? (
-              <span className="badge primary" style={{ marginLeft: 4 }}>
-                {accessRequests.length}
-              </span>
-            ) : null}
-          </Button>
+          {canManageBoard ? (
+            <Button size="sm" icon="user" onClick={openShare}>
+              <span className="hide-mobile">{t('board.share')}</span>
+              {accessRequests.length > 0 ? (
+                <span className="badge primary" style={{ marginLeft: 4 }}>
+                  {accessRequests.length}
+                </span>
+              ) : null}
+            </Button>
+          ) : null}
           <Menu
             trigger={(props) => (
               <Button size="sm" icon="more" aria-label={t('common.actions')} {...props} />
@@ -981,49 +1069,65 @@ export function BoardPage() {
                 {t('board.manageLabels')}
               </MenuItem>
             ) : null}
+            <MenuItem
+              icon="plus"
+              onClick={() =>
+                void navigate({ to: '/share/board-accept/$boardId', params: { boardId } })
+              }
+            >
+              {t('board.addToWorkspace')}
+            </MenuItem>
             <MenuItem icon="duplicate" onClick={() => void duplicateBoard()}>
               {t('common.duplicate')}
             </MenuItem>
-            <MenuItem
-              icon="download"
-              onClick={() =>
-                void downloadWithAuth(
-                  `/v1/boards/${boardId}/export?format=json&locale=${i18n.language === 'en' ? 'en' : 'ru'}`,
-                  `${board.name}.json`,
-                )
-              }
-            >
-              {t('board.exportJson')}
-            </MenuItem>
-            <MenuItem
-              icon="download"
-              onClick={() =>
-                void downloadWithAuth(
-                  `/v1/boards/${boardId}/export?format=csv&locale=${i18n.language === 'en' ? 'en' : 'ru'}`,
-                  `${board.name}.csv`,
-                )
-              }
-            >
-              {t('board.exportCsv')}
-            </MenuItem>
-            <MenuItem
-              icon="download"
-              onClick={() =>
-                void downloadWithAuth(
-                  `/v1/boards/${boardId}/export?format=md&locale=${i18n.language === 'en' ? 'en' : 'ru'}`,
-                  `${board.name}.md`,
-                )
-              }
-            >
-              {t('board.exportMd')}
-            </MenuItem>
+            {isPro ? (
+              <>
+                <MenuItem
+                  icon="download"
+                  onClick={() =>
+                    void downloadWithAuth(
+                      `/v1/boards/${boardId}/export?format=json&locale=${i18n.language === 'en' ? 'en' : 'ru'}`,
+                      `${board.name}.json`,
+                    )
+                  }
+                >
+                  {t('board.exportJson')}
+                </MenuItem>
+                <MenuItem
+                  icon="download"
+                  onClick={() =>
+                    void downloadWithAuth(
+                      `/v1/boards/${boardId}/export?format=csv&locale=${i18n.language === 'en' ? 'en' : 'ru'}`,
+                      `${board.name}.csv`,
+                    )
+                  }
+                >
+                  {t('board.exportCsv')}
+                </MenuItem>
+                <MenuItem
+                  icon="download"
+                  onClick={() =>
+                    void downloadWithAuth(
+                      `/v1/boards/${boardId}/export?format=md&locale=${i18n.language === 'en' ? 'en' : 'ru'}`,
+                      `${board.name}.md`,
+                    )
+                  }
+                >
+                  {t('board.exportMd')}
+                </MenuItem>
+              </>
+            ) : null}
             <div className="menu-separator" />
-            <MenuItem icon="archive" onClick={() => void archiveBoard()}>
-              {t('board.archiveBoard')}
-            </MenuItem>
-            <MenuItem icon="trash" danger onClick={() => setDeleteBoardOpen(true)}>
-              {t('board.deleteBoard')}
-            </MenuItem>
+            {canManageBoard ? (
+              <>
+                <MenuItem icon="archive" onClick={() => void archiveBoard()}>
+                  {t('board.archiveBoard')}
+                </MenuItem>
+                <MenuItem icon="trash" danger onClick={() => setDeleteBoardOpen(true)}>
+                  {t('board.deleteBoard')}
+                </MenuItem>
+              </>
+            ) : null}
           </Menu>
         </div>
       </div>
@@ -1584,6 +1688,44 @@ export function BoardPage() {
                 />
               ))}
             </div>
+            {isPro ? (
+              <label className="row" style={{ gap: 8, marginTop: 8 }}>
+                <input
+                  type="color"
+                  value={/^#[0-9a-f]{6}$/i.test(settingsCover) ? settingsCover : LIST_COLORS[0]!}
+                  onChange={(event) => setSettingsCover(event.target.value.toUpperCase())}
+                  style={{
+                    width: 36,
+                    height: 28,
+                    padding: 0,
+                    border: 'none',
+                    background: 'none',
+                    cursor: 'pointer',
+                  }}
+                />
+                <span className="caption subtle">{t('board.customCover')}</span>
+              </label>
+            ) : null}
+          </div>
+          <div className="card-panel" style={{ padding: 12, background: 'var(--color-surface-2)' }}>
+            <div className="small">
+              <span className="muted">{t('board.boardOwner')}: </span>
+              <span className="strong">{snapshot?.board_owner?.display_name ?? '—'}</span>
+            </div>
+            <div className="small" style={{ marginTop: 4 }}>
+              <span className="muted">{t('board.workspaceOwner')}: </span>
+              <span className="strong">
+                {snapshot?.workspace.name ?? '—'} · {snapshot?.workspace.owner_name ?? '—'}
+              </span>
+            </div>
+            {snapshot?.linked_workspaces.length ? (
+              <div className="small" style={{ marginTop: 4 }}>
+                <span className="muted">{t('board.linkedWorkspaces')}: </span>
+                <span className="strong">
+                  {snapshot.linked_workspaces.map((item) => item.name).join(', ')}
+                </span>
+              </div>
+            ) : null}
           </div>
         </div>
       </Modal>
@@ -1724,10 +1866,11 @@ export function BoardPage() {
             <select
               className="select"
               value={shareRole}
-              onChange={(event) => setShareRole(event.target.value as 'viewer' | 'member')}
+              onChange={(event) => setShareRole(event.target.value as BoardMemberRole)}
             >
               <option value="viewer">{t('board.canView')}</option>
-              <option value="member">{t('board.canEdit')}</option>
+              <option value="assigner">{t('board.roleAssigner')}</option>
+              <option value="executor">{t('board.roleExecutor')}</option>
             </select>
             <Button
               variant="primary"
@@ -1754,13 +1897,14 @@ export function BoardPage() {
               ))}
             </div>
           ) : null}
-          {canManageBoard ? (
+          {canManageRoles ? (
             <>
               <hr className="divider" />
               <div className="spread">
                 <span className="label">{t('board.accessRequests')}</span>
                 <span className="badge">{accessRequests.length}</span>
               </div>
+              <p className="caption subtle">{t('board.rolesHint')}</p>
               {accessRequests.length === 0 ? (
                 <p className="caption subtle">{t('board.noAccessRequests')}</p>
               ) : (
@@ -1776,11 +1920,31 @@ export function BoardPage() {
                         </div>
                       ) : null}
                     </div>
+                    <select
+                      className="select"
+                      style={{ width: 132, minHeight: 30 }}
+                      value={requestRoles[request.id] ?? 'executor'}
+                      onChange={(event) =>
+                        setRequestRoles((current) => ({
+                          ...current,
+                          [request.id]: event.target.value as 'assigner' | 'executor',
+                        }))
+                      }
+                      aria-label={t('settings.role')}
+                    >
+                      <option value="executor">{t('board.roleExecutor')}</option>
+                      <option value="assigner">{t('board.roleAssigner')}</option>
+                    </select>
                     <Button
                       size="sm"
                       variant="primary"
                       disabled={requestBusy === request.id}
-                      onClick={() => void approveAccessRequest(request.id, 'member')}
+                      onClick={() =>
+                        void approveAccessRequest(
+                          request.id,
+                          requestRoles[request.id] ?? 'executor',
+                        )
+                      }
                     >
                       {t('board.approve')}
                     </Button>
@@ -1829,6 +1993,102 @@ export function BoardPage() {
           }}
         />
       </Modal>
+
+      <Modal
+        open={membersOpen}
+        onClose={() => setMembersOpen(false)}
+        title={t('board.members')}
+        footer={
+          <Button variant="ghost" onClick={() => setMembersOpen(false)}>
+            {t('common.close')}
+          </Button>
+        }
+      >
+        <p className="caption subtle">{t('board.membersHint')}</p>
+        <div>
+          {members.map((member) => {
+            const boardRow = boardMemberRows.find((row) => row.user_id === member.user_id);
+            const isOwner = snapshot?.board.created_by === member.user_id;
+            const online = onlineIds.has(member.user_id);
+            return (
+              <div className="member-row" key={member.user_id}>
+                <Avatar name={member.display_name} src={member.avatar_url} size="sm" />
+                <div className="grow" style={{ minWidth: 0 }}>
+                  <div className="row wrap" style={{ gap: 6 }}>
+                    <span className="strong small truncate">{member.display_name}</span>
+                    {isOwner ? (
+                      <span className="badge primary">{t('board.ownerBadge')}</span>
+                    ) : null}
+                    {online ? <span className="badge success">{t('board.onlineNow')}</span> : null}
+                  </div>
+                  <div className="caption subtle truncate">{member.email}</div>
+                </div>
+                {canManageRoles && boardRow && !isOwner ? (
+                  <select
+                    className="select"
+                    style={{ width: 140, minHeight: 30 }}
+                    value={boardRow.role === 'viewer' ? '' : boardRow.role}
+                    disabled={memberBusy === member.user_id}
+                    onChange={(event) =>
+                      void changeMemberRole(
+                        member.user_id,
+                        event.target.value as 'assigner' | 'executor',
+                      )
+                    }
+                    aria-label={t('settings.role')}
+                  >
+                    {boardRow.role === 'viewer' ? (
+                      <option value="" disabled>
+                        {t('settings.viewer')}
+                      </option>
+                    ) : null}
+                    <option value="assigner">{t('board.roleAssigner')}</option>
+                    <option value="executor">{t('board.roleExecutor')}</option>
+                  </select>
+                ) : (
+                  <span className="badge">{t(roleLabelKey(member.role))}</span>
+                )}
+                {canManageRoles && boardRow && !isOwner ? (
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    icon="trash"
+                    aria-label={t('board.removeMember')}
+                    disabled={memberBusy === member.user_id}
+                    onClick={() => setMemberToRemove(member)}
+                  />
+                ) : null}
+              </div>
+            );
+          })}
+        </div>
+      </Modal>
+
+      <Modal
+        open={Boolean(memberToRemove)}
+        onClose={() => setMemberToRemove(null)}
+        title={t('board.removeMemberTitle')}
+        footer={
+          <>
+            <Button variant="ghost" onClick={() => setMemberToRemove(null)}>
+              {t('common.cancel')}
+            </Button>
+            <Button
+              variant="danger"
+              disabled={memberBusy === memberToRemove?.user_id}
+              onClick={() => {
+                if (memberToRemove) void removeMember(memberToRemove);
+              }}
+            >
+              {t('board.removeMember')}
+            </Button>
+          </>
+        }
+      >
+        <p className="small muted">
+          {t('board.removeMemberHint', { name: memberToRemove?.display_name ?? '' })}
+        </p>
+      </Modal>
     </div>
   );
 }
@@ -1850,16 +2110,17 @@ function groupIds(
   return map;
 }
 
-function Presence({ users }: { users: PresenceUser[] }) {
-  const { t } = useTranslation();
-  return (
-    <span className="avatar-stack" title={t('board.presence', { count: users.length })}>
-      {users.slice(0, 4).map((user) => (
-        <Avatar key={user.id} name={user.name} src={user.avatar_url} size="sm" />
-      ))}
-      {users.length > 4 ? <span className="avatar sm">+{users.length - 4}</span> : null}
-    </span>
-  );
+const BOARD_ROLE_KEYS: Record<string, string> = {
+  owner: 'settings.owner',
+  manager: 'settings.manager',
+  member: 'settings.member',
+  viewer: 'settings.viewer',
+  assigner: 'board.roleAssigner',
+  executor: 'board.roleExecutor',
+};
+
+function roleLabelKey(role: string): string {
+  return BOARD_ROLE_KEYS[role] ?? 'settings.member';
 }
 
 function SortableCard(props: {

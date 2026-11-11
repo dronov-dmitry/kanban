@@ -37,6 +37,7 @@ export function ProfilePage() {
   const queryClient = useQueryClient();
   const toast = useToast();
   const auth = useAuthStore();
+  const isPro = auth.user?.plan === 'pro';
   const updateSettings = useUpdateSettings();
   const [name, setName] = useState(auth.user?.display_name ?? '');
   const [timezone, setTimezone] = useState(auth.user?.timezone ?? 'Europe/Moscow');
@@ -429,14 +430,16 @@ export function ProfilePage() {
           )}
         </section>
 
-        <section className="card-panel">
-          <h2 style={{ fontSize: 16, marginBottom: 12 }}>{t('settings.exportData')}</h2>
-          <div className="row wrap">
-            <Button icon="download" onClick={() => void exportData()}>
-              {t('settings.exportData')}
-            </Button>
-          </div>
-        </section>
+        {isPro ? (
+          <section className="card-panel">
+            <h2 style={{ fontSize: 16, marginBottom: 12 }}>{t('settings.exportData')}</h2>
+            <div className="row wrap">
+              <Button icon="download" onClick={() => void exportData()}>
+                {t('settings.exportData')}
+              </Button>
+            </div>
+          </section>
+        ) : null}
 
         <section className="card-panel danger-zone">
           <h2 style={{ fontSize: 16 }}>{t('settings.deleteAccount')}</h2>

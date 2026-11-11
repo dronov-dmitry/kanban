@@ -65,6 +65,10 @@ const BoardInvitePage = lazyRouteComponent(
   'BoardInvitePage',
 );
 const JoinPage = lazyRouteComponent(() => import('../features/public/JoinPage'), 'JoinPage');
+const BoardAcceptPage = lazyRouteComponent(
+  () => import('../features/public/BoardAcceptPage'),
+  'BoardAcceptPage',
+);
 
 const rootRoute = createRootRoute({
   component: () => <Outlet />,
@@ -151,6 +155,11 @@ const joinRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/join/$token',
   component: JoinPage,
+});
+const boardAcceptRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/share/board-accept/$boardId',
+  component: BoardAcceptPage,
 });
 
 const appRoute = createRoute({
@@ -246,6 +255,7 @@ const routeTree = rootRoute.addChildren([
   publicBoardRoute,
   boardInviteRoute,
   joinRoute,
+  boardAcceptRoute,
   appRoute.addChildren([
     appIndexRoute,
     profileRoute,

@@ -135,7 +135,7 @@ export function AppShell() {
   }, [notificationsOpen]);
 
   const role = current?.role ?? 'viewer';
-  const isAdmin = role === 'owner' || role === 'admin';
+  const isManager = role === 'owner' || role === 'manager';
   const sharedBoardList = (sharedBoards.data?.data ?? []).filter(
     (board) => !(boards.data?.data ?? []).some((item) => item.id === board.id),
   );
@@ -197,6 +197,13 @@ export function AppShell() {
       return;
     }
     if (!payload.board_id) return;
+    if (notification.type === 'board.shared' || notification.type === 'board.access_approved') {
+      void navigate({
+        to: '/share/board-accept/$boardId',
+        params: { boardId: payload.board_id },
+      });
+      return;
+    }
     if (notification.type === 'board.access_rejected') {
       toast.push(t('notifications.accessRejected'), { kind: 'danger' });
       return;
@@ -235,7 +242,7 @@ export function AppShell() {
       <div className="app-shell">
         <aside className="sidebar" aria-label={t('nav.dashboard')}>
           <div className="sidebar-header">
-            <Link to="/app" className="row" style={{ textDecoration: 'none', color: 'inherit' }}>
+            <Link to="/" className="row" style={{ textDecoration: 'none', color: 'inherit' }}>
               <span className="logo-mark" aria-hidden="true">
                 <Icon name="board" size={18} />
               </span>
@@ -305,7 +312,7 @@ export function AppShell() {
                   <span>{item.label}</span>
                 </Link>
               ))}
-              {isAdmin ? (
+              {isManager ? (
                 <Link
                   to="/app/$wsSlug/settings"
                   params={{ wsSlug: current.slug }}
