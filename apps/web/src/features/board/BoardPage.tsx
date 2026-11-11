@@ -249,7 +249,9 @@ export function BoardPage() {
   const effectiveRole = snapshot?.role ?? role;
   const canWrite =
     effectiveRole === 'owner' || effectiveRole === 'admin' || effectiveRole === 'member';
-  const canManageBoard = snapshot?.can_manage ?? false;
+  const canManageBoard =
+    snapshot?.can_manage ??
+    Boolean(snapshot && currentUser && snapshot.board.created_by === currentUser.id);
   const accessRequests = snapshot?.access_requests ?? [];
 
   function go(next: BoardSearch, replace = false) {
@@ -698,13 +700,19 @@ export function BoardPage() {
   }
 
   async function changeVisibility(next: BoardVisibility) {
+    patchSnapshot((draft) => {
+      draft.board.visibility = next;
+      if (next === 'private') draft.board.public_token = null;
+    });
+    setSettingsVisibility(next);
+    setShareResult(null);
     try {
       await patch(`/v1/boards/${boardId}`, { visibility: next });
-      setSettingsVisibility(next);
-      setShareResult(null);
       await queryClient.invalidateQueries({ queryKey: ['board', boardId] });
+      if (next === 'private') void loadShareLinks();
       toast.push(t('common.saved'), { kind: 'success' });
     } catch (error) {
+      await queryClient.invalidateQueries({ queryKey: ['board', boardId] });
       toast.push(
         error instanceof ApiError
           ? (error.problem.detail ?? t('errors.generic'))
@@ -1631,6 +1639,7 @@ export function BoardPage() {
               </div>
             ) : (
               <div className="stack" style={{ gap: 6 }}>
+                <p className="caption subtle">{t('board.publicLinkOnly')}</p>
                 {privateLinks.map((link) => (
                   <div className="row" key={link.id}>
                     <input
