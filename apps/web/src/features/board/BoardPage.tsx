@@ -29,7 +29,6 @@ import {
   EMPTY_FILTERS,
   type FilterState,
   keyBetween,
-  type Member,
   matchesFilters,
   parseFilters,
   type RealtimeEvent,
@@ -111,10 +110,7 @@ export function BoardPage() {
   const [shareOpen, setShareOpen] = useState(false);
   const [shareEmails, setShareEmails] = useState('');
   const [shareRole, setShareRole] = useState<BoardMemberRole>('viewer');
-  const [membersOpen, setMembersOpen] = useState(false);
-  const [memberToRemove, setMemberToRemove] = useState<Member | null>(null);
   const [requestRoles, setRequestRoles] = useState<Record<string, 'assigner' | 'executor'>>({});
-  const [memberBusy, setMemberBusy] = useState<string | null>(null);
   const [shareResult, setShareResult] = useState<{
     link: string;
     results: Array<{ email: string; status: string }>;
@@ -248,11 +244,6 @@ export function BoardPage() {
   const canManageRoles =
     snapshot?.can_manage_roles ??
     Boolean(snapshot && currentUser && snapshot.board.created_by === currentUser.id);
-  const boardMemberRows = snapshot?.board_members ?? [];
-  const onlineIds = useMemo(
-    () => new Set(realtime.presence.map((user) => user.id)),
-    [realtime.presence],
-  );
   const accessRequests = snapshot?.access_requests ?? [];
 
   function go(next: BoardSearch, replace = false) {
@@ -711,43 +702,6 @@ export function BoardPage() {
     }
   }
 
-  async function changeMemberRole(userId: string, nextRole: 'assigner' | 'executor') {
-    setMemberBusy(userId);
-    try {
-      await patch(`/v1/boards/${boardId}/members/${userId}`, { role: nextRole });
-      await queryClient.invalidateQueries({ queryKey: ['board', boardId] });
-      toast.push(t('board.roleChanged'), { kind: 'success' });
-    } catch (error) {
-      toast.push(
-        error instanceof ApiError
-          ? (error.problem.detail ?? t('errors.generic'))
-          : t('errors.generic'),
-        { kind: 'danger' },
-      );
-    } finally {
-      setMemberBusy(null);
-    }
-  }
-
-  async function removeMember(member: Member) {
-    setMemberBusy(member.user_id);
-    try {
-      await del(`/v1/boards/${boardId}/members/${member.user_id}`);
-      await queryClient.invalidateQueries({ queryKey: ['board', boardId] });
-      setMemberToRemove(null);
-      toast.push(t('board.memberRemoved'), { kind: 'success' });
-    } catch (error) {
-      toast.push(
-        error instanceof ApiError
-          ? (error.problem.detail ?? t('errors.generic'))
-          : t('errors.generic'),
-        { kind: 'danger' },
-      );
-    } finally {
-      setMemberBusy(null);
-    }
-  }
-
   async function rejectAccessRequest(requestId: string) {
     setRequestBusy(requestId);
     try {
@@ -925,25 +879,6 @@ export function BoardPage() {
         </div>
 
         <div className="topbar-right">
-          {members.length > 0 ? (
-            <button
-              type="button"
-              className="avatar-stack avatar-stack-button"
-              onClick={() => setMembersOpen(true)}
-              title={t('board.viewMembers', { count: members.length })}
-              aria-label={t('board.viewMembers', { count: members.length })}
-            >
-              {members.slice(0, 4).map((member) => (
-                <Avatar
-                  key={member.user_id}
-                  name={member.display_name}
-                  src={member.avatar_url}
-                  size="sm"
-                />
-              ))}
-              {members.length > 4 ? <span className="avatar sm">+{members.length - 4}</span> : null}
-            </button>
-          ) : null}
           <span
             title={realtime.connected ? t('common.online') : t('common.offline')}
             style={{
@@ -1700,102 +1635,6 @@ export function BoardPage() {
           }}
         />
       </Modal>
-
-      <Modal
-        open={membersOpen}
-        onClose={() => setMembersOpen(false)}
-        title={t('board.members')}
-        footer={
-          <Button variant="ghost" onClick={() => setMembersOpen(false)}>
-            {t('common.close')}
-          </Button>
-        }
-      >
-        <p className="caption subtle">{t('board.membersHint')}</p>
-        <div>
-          {members.map((member) => {
-            const boardRow = boardMemberRows.find((row) => row.user_id === member.user_id);
-            const isOwner = snapshot?.board.created_by === member.user_id;
-            const online = onlineIds.has(member.user_id);
-            return (
-              <div className="member-row" key={member.user_id}>
-                <Avatar name={member.display_name} src={member.avatar_url} size="sm" />
-                <div className="grow" style={{ minWidth: 0 }}>
-                  <div className="row wrap" style={{ gap: 6 }}>
-                    <span className="strong small truncate">{member.display_name}</span>
-                    {isOwner ? (
-                      <span className="badge primary">{t('board.ownerBadge')}</span>
-                    ) : null}
-                    {online ? <span className="badge success">{t('board.onlineNow')}</span> : null}
-                  </div>
-                  <div className="caption subtle truncate">{member.email}</div>
-                </div>
-                {canManageRoles && boardRow && !isOwner ? (
-                  <select
-                    className="select"
-                    style={{ width: 140, minHeight: 30 }}
-                    value={boardRow.role === 'viewer' ? '' : boardRow.role}
-                    disabled={memberBusy === member.user_id}
-                    onChange={(event) =>
-                      void changeMemberRole(
-                        member.user_id,
-                        event.target.value as 'assigner' | 'executor',
-                      )
-                    }
-                    aria-label={t('settings.role')}
-                  >
-                    {boardRow.role === 'viewer' ? (
-                      <option value="" disabled>
-                        {t('settings.viewer')}
-                      </option>
-                    ) : null}
-                    <option value="assigner">{t('board.roleAssigner')}</option>
-                    <option value="executor">{t('board.roleExecutor')}</option>
-                  </select>
-                ) : (
-                  <span className="badge">{t(roleLabelKey(member.role))}</span>
-                )}
-                {canManageRoles && boardRow && !isOwner ? (
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    icon="trash"
-                    aria-label={t('board.removeMember')}
-                    disabled={memberBusy === member.user_id}
-                    onClick={() => setMemberToRemove(member)}
-                  />
-                ) : null}
-              </div>
-            );
-          })}
-        </div>
-      </Modal>
-
-      <Modal
-        open={Boolean(memberToRemove)}
-        onClose={() => setMemberToRemove(null)}
-        title={t('board.removeMemberTitle')}
-        footer={
-          <>
-            <Button variant="ghost" onClick={() => setMemberToRemove(null)}>
-              {t('common.cancel')}
-            </Button>
-            <Button
-              variant="danger"
-              disabled={memberBusy === memberToRemove?.user_id}
-              onClick={() => {
-                if (memberToRemove) void removeMember(memberToRemove);
-              }}
-            >
-              {t('board.removeMember')}
-            </Button>
-          </>
-        }
-      >
-        <p className="small muted">
-          {t('board.removeMemberHint', { name: memberToRemove?.display_name ?? '' })}
-        </p>
-      </Modal>
     </div>
   );
 }
@@ -1815,19 +1654,6 @@ function groupIds(
     map.set(id, list);
   }
   return map;
-}
-
-const BOARD_ROLE_KEYS: Record<string, string> = {
-  owner: 'settings.owner',
-  manager: 'settings.manager',
-  member: 'settings.member',
-  viewer: 'settings.viewer',
-  assigner: 'board.roleAssigner',
-  executor: 'board.roleExecutor',
-};
-
-function roleLabelKey(role: string): string {
-  return BOARD_ROLE_KEYS[role] ?? 'settings.member';
 }
 
 function SortableCard(props: {
