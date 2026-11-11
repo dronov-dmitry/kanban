@@ -166,6 +166,9 @@ export function BoardActionsMenu({
     }
   }
 
+  const hasMenuItems = canWrite || canManageBoard || canLeave || isPro;
+  if (!hasMenuItems) return null;
+
   return (
     <>
       <Menu
