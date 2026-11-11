@@ -1,0 +1,13 @@
+node_modules/
+dist/
+coverage/
+.turbo/
+.wrangler/
+.dev.vars
+.env
+.env.local
+*.local
+.DS_Store
+playwright-report/
+test-results/
+.env.store

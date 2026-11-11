@@ -1,0 +1,31 @@
+{
+  "name": "kanban",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "packageManager": "pnpm@11.22.0",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "dev": "turbo run dev --parallel",
+    "build": "turbo run build",
+    "typecheck": "turbo run typecheck",
+    "test": "turbo run test",
+    "lint": "biome check .",
+    "format": "biome format --write .",
+    "db:migrate:local": "pnpm --filter @kanban/api db:migrate:local",
+    "db:seed:local": "pnpm --filter @kanban/api db:seed:local",
+    "preview": "pnpm --filter @kanban/web preview",
+    "e2e": "pnpm --filter @kanban/web e2e",
+    "test:coverage": "turbo run test -- --coverage"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^2.2.0",
+    "playwright": "^1.65.0",
+    "turbo": "^2.5.0",
+    "typescript": "^5.9.0",
+    "vitest": "^3.2.0",
+    "wrangler": "^4.158.0"
+  }
+}
