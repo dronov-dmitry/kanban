@@ -381,6 +381,7 @@ function BoardSettingsDialog({
   const [moving, setMoving] = useState(false);
   const [memberBusy, setMemberBusy] = useState<string | null>(null);
   const [removeCandidate, setRemoveCandidate] = useState<Member | null>(null);
+  const [unlinkCandidate, setUnlinkCandidate] = useState<{ id: string; name: string } | null>(null);
 
   const members = snapshot?.members ?? [];
   const boardMemberRows = snapshot?.board_members ?? [];
@@ -413,6 +414,26 @@ function BoardSettingsDialog({
       await queryClient.invalidateQueries({ queryKey: ['board', board.id] });
       setRemoveCandidate(null);
       toast.push(t('board.memberRemoved'), { kind: 'success' });
+    } catch (error) {
+      toast.push(
+        error instanceof ApiError
+          ? (error.problem.detail ?? t('errors.generic'))
+          : t('errors.generic'),
+        { kind: 'danger' },
+      );
+    } finally {
+      setMemberBusy(null);
+    }
+  }
+
+  async function unlinkWorkspace() {
+    if (!unlinkCandidate) return;
+    setMemberBusy(unlinkCandidate.id);
+    try {
+      await del(`/v1/boards/${board.id}/links/${unlinkCandidate.id}`);
+      await queryClient.invalidateQueries({ queryKey: ['board', board.id] });
+      setUnlinkCandidate(null);
+      toast.push(t('board.workspaceUnlinked'), { kind: 'success' });
     } catch (error) {
       toast.push(
         error instanceof ApiError
@@ -690,7 +711,25 @@ function BoardSettingsDialog({
                       onClick={() => setRemoveCandidate(member)}
                     />
                   ) : null}
-                  {!direct && sourceWorkspace ? (
+                  {!direct &&
+                  accessVia === 'linked' &&
+                  canManageRoles &&
+                  member.source_workspace_id ? (
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      icon="trash"
+                      aria-label={t('board.unlinkWorkspace')}
+                      title={t('board.unlinkWorkspace')}
+                      disabled={memberBusy === member.source_workspace_id}
+                      onClick={() =>
+                        setUnlinkCandidate({
+                          id: member.source_workspace_id!,
+                          name: member.source_workspace_name ?? '',
+                        })
+                      }
+                    />
+                  ) : !direct && sourceWorkspace ? (
                     <Button
                       size="sm"
                       variant="ghost"
@@ -756,6 +795,32 @@ function BoardSettingsDialog({
       >
         <p className="small muted">
           {t('board.removeMemberHint', { name: removeCandidate?.display_name ?? '' })}
+        </p>
+      </Modal>
+
+      <Modal
+        open={Boolean(unlinkCandidate)}
+        onClose={() => setUnlinkCandidate(null)}
+        title={t('board.unlinkWorkspaceTitle')}
+        footer={
+          <>
+            <Button variant="ghost" onClick={() => setUnlinkCandidate(null)}>
+              {t('common.cancel')}
+            </Button>
+            <Button
+              variant="danger"
+              disabled={memberBusy === unlinkCandidate?.id}
+              onClick={() => void unlinkWorkspace()}
+            >
+              {t('board.unlinkWorkspace')}
+            </Button>
+          </>
+        }
+      >
+        <p className="small muted">
+          {t('board.unlinkWorkspaceHint', {
+            workspace: unlinkCandidate?.name ?? '',
+          })}
         </p>
       </Modal>
     </>

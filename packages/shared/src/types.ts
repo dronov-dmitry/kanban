@@ -58,6 +58,7 @@ export interface Member {
   joined_at: number;
   /** Board listings: where the access comes from. */
   access_via?: 'workspace' | 'linked' | 'direct';
+  source_workspace_id?: string;
   source_workspace_slug?: string;
   source_workspace_name?: string;
 }
