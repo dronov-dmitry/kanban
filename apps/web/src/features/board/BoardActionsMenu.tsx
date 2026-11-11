@@ -14,6 +14,7 @@ interface BoardActionsMenuProps {
   board: Board;
   canWrite: boolean;
   canManageBoard: boolean;
+  canLeave?: boolean;
   onLabelsDeleted?: (labelId: string) => void;
   initialSettingsOpen?: boolean;
 }
@@ -22,6 +23,7 @@ export function BoardActionsMenu({
   board,
   canWrite,
   canManageBoard,
+  canLeave = false,
   onLabelsDeleted,
   initialSettingsOpen,
 }: BoardActionsMenuProps) {
@@ -35,6 +37,7 @@ export function BoardActionsMenu({
   const [settingsOpen, setSettingsOpen] = useState(Boolean(initialSettingsOpen));
   const [labelsOpen, setLabelsOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const [leaveOpen, setLeaveOpen] = useState(false);
 
   async function archiveBoard() {
     try {
@@ -91,6 +94,27 @@ export function BoardActionsMenu({
               ? t('errors.cardLimit')
               : (error.problem.detail ?? t('errors.generic'))
           : t('errors.generic'),
+        { kind: 'danger' },
+      );
+    }
+  }
+
+  async function leaveBoard() {
+    try {
+      await del(`/v1/boards/${board.id}/leave`);
+      setLeaveOpen(false);
+      await queryClient.invalidateQueries({ queryKey: ['boards', board.workspace_id] });
+      await queryClient.invalidateQueries({ queryKey: ['boards', 'shared'] });
+      toast.push(t('board.leftBoard'), { kind: 'success' });
+      await navigate({ to: '/app' });
+    } catch (error) {
+      toast.push(
+        error instanceof ApiError &&
+          (error.code === 'board_access_via_workspace' || error.code === 'board_access_via_link')
+          ? t('errors.leaveViaWorkspace')
+          : error instanceof ApiError
+            ? (error.problem.detail ?? t('errors.generic'))
+            : t('errors.generic'),
         { kind: 'danger' },
       );
     }
@@ -167,6 +191,14 @@ export function BoardActionsMenu({
             </MenuItem>
           </>
         ) : null}
+        {canLeave ? (
+          <>
+            <div className="menu-separator" />
+            <MenuItem icon="logout" onClick={() => setLeaveOpen(true)}>
+              {t('board.leaveBoard')}
+            </MenuItem>
+          </>
+        ) : null}
         {canManageBoard ? (
           <>
             <div className="menu-separator" />
@@ -199,6 +231,24 @@ export function BoardActionsMenu({
           onLabelDeleted={onLabelsDeleted}
         />
       ) : null}
+
+      <Modal
+        open={leaveOpen}
+        onClose={() => setLeaveOpen(false)}
+        title={t('board.leaveBoardTitle')}
+        footer={
+          <>
+            <Button variant="ghost" onClick={() => setLeaveOpen(false)}>
+              {t('common.cancel')}
+            </Button>
+            <Button variant="danger" onClick={() => void leaveBoard()}>
+              {t('board.leaveBoard')}
+            </Button>
+          </>
+        }
+      >
+        <p className="small muted">{t('board.leaveBoardHint', { name: board.name })}</p>
+      </Modal>
 
       <Modal
         open={deleteOpen}

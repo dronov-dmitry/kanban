@@ -902,6 +902,7 @@ export function BoardPage() {
             board={board}
             canWrite={canWrite}
             canManageBoard={canManageBoard}
+            canLeave={snapshot?.can_leave ?? false}
             initialSettingsOpen={search.settings === '1'}
             onLabelsDeleted={(labelId) =>
               setFilters((current) => ({

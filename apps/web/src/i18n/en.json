@@ -306,6 +306,10 @@
     "roleWorkerHint": "Can only take tasks for themselves.",
     "rolesHint": "A manager hands tasks to others, a worker takes tasks for themselves only. Only the board owner can change roles.",
     "ownerBadge": "Owner",
+    "leaveBoard": "Leave board",
+    "leaveBoardTitle": "Leave board",
+    "leaveBoardHint": "You will lose access to “{{name}}”. You can only return with a new invitation.",
+    "leftBoard": "You left the board",
     "boardOwner": "Board owner",
     "workspaceOwner": "Workspace",
     "linkedWorkspaces": "Also available in",
@@ -583,7 +587,8 @@
     "coverPro": "Custom board covers are available on the PRO plan.",
     "proRequired": "This feature is available on the PRO plan.",
     "importInvalid": "This file does not look like a Kanban JSON export.",
-    "importFailed": "Could not import the board."
+    "importFailed": "Could not import the board.",
+    "leaveViaWorkspace": "This board is shared through a workspace. Leave the workspace instead."
   },
   "meta": {
     "title": "Kanban — the board that stays out of your way",

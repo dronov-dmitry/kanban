@@ -345,6 +345,7 @@ export function WorkspaceHomePage() {
                 ) : null}
                 {board.library_origin === 'linked' ? (
                   <span className="badge info">
+                    <Icon name="link" size={12} />
                     {t('workspace.linkedBoard', {
                       workspace: board.origin_workspace_name ?? '—',
                     })}

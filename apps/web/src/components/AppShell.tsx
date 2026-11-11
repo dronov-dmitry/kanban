@@ -387,15 +387,7 @@ export function AppShell() {
                     className={cn('nav-item', params.boardId === board.id && 'active')}
                   >
                     <span className="icon" aria-hidden="true">
-                      <span
-                        style={{
-                          width: 9,
-                          height: 9,
-                          borderRadius: 3,
-                          background: board.cover ?? 'var(--color-primary)',
-                          display: 'block',
-                        }}
-                      />
+                      <Icon name="link" size={14} />
                     </span>
                     <span className="grow truncate">{board.name}</span>
                   </Link>

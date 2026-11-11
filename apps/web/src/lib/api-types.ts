@@ -107,6 +107,7 @@ export interface BoardSnapshotResponse {
   access_requests: BoardAccessRequestRow[];
   can_manage: boolean;
   can_manage_roles: boolean;
+  can_leave: boolean;
   workspace: {
     id: string;
     name: string;
