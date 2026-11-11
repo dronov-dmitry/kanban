@@ -173,9 +173,8 @@ export function AppShell() {
   }
 
   async function toggleTheme() {
-    const order = ['system', 'light', 'dark'] as const;
-    const currentTheme = auth.settings?.theme ?? 'system';
-    const next = order[(order.indexOf(currentTheme as (typeof order)[number]) + 1) % order.length]!;
+    const current = resolveTheme(auth.settings?.theme ?? 'system');
+    const next = current === 'dark' ? 'light' : 'dark';
     await updateSettings({ theme: next });
   }
 
@@ -485,17 +484,20 @@ export function AppShell() {
               </div>
             </div>
             <div className="topbar-right">
-              <Button
-                variant="ghost"
-                size="sm"
-                icon="search"
-                aria-label={t('common.search')}
-                onClick={() => {
-                  if (current)
-                    void navigate({ to: '/app/$wsSlug/search', params: { wsSlug: current.slug } });
-                  else setPaletteOpen(true);
-                }}
-              />
+              {current ? (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  icon="search"
+                  aria-label={t('common.search')}
+                  onClick={() =>
+                    void navigate({
+                      to: '/app/$wsSlug/search',
+                      params: { wsSlug: current.slug },
+                    })
+                  }
+                />
+              ) : null}
               <Button
                 variant="ghost"
                 size="sm"
@@ -591,7 +593,7 @@ export function AppShell() {
                   {t('settings.changePassword')}
                 </MenuItem>
                 <MenuItem
-                  icon={auth.settings?.theme === 'dark' ? 'sun' : 'moon'}
+                  icon={resolveTheme(auth.settings?.theme ?? 'system') === 'dark' ? 'sun' : 'moon'}
                   onClick={() => void toggleTheme()}
                 >
                   {t('common.theme')}
