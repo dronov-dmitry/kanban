@@ -64,13 +64,42 @@ export const boardCreateSchema = z.object({
   template: templateSchema.default('empty'),
 });
 
+export const boardVisibilitySchema = z.enum(['private', 'public']);
+export const boardMemberRoleSchema = z.enum(['viewer', 'member']);
+
 export const boardPatchSchema = z.object({
   name: z.string().trim().min(1).max(120).optional(),
   description: z.string().max(2000).nullable().optional(),
   cover: z.string().max(500).nullable().optional(),
+  visibility: boardVisibilitySchema.optional(),
   isFavorite: z.boolean().optional(),
   prefs: z.record(z.string(), z.unknown()).optional(),
   archived: z.boolean().optional(),
+});
+
+export const boardAccessRequestSchema = z.object({
+  message: z.string().trim().max(1000).optional(),
+});
+
+export const boardAccessDecisionSchema = z.object({
+  role: boardMemberRoleSchema.default('member'),
+});
+
+export const boardShareSchema = z.object({
+  emails: z.array(emailSchema).min(1).max(20),
+  role: boardMemberRoleSchema.default('viewer'),
+  message: z.string().trim().max(500).optional(),
+});
+
+export const banCreateSchema = z.object({
+  email: emailSchema,
+  reason: z.string().trim().max(500).optional(),
+  expiresAt: z.number().int().positive().nullable().optional(),
+});
+
+export const serviceInviteCreateSchema = z.object({
+  email: emailSchema.optional(),
+  note: z.string().trim().max(500).optional(),
 });
 
 export const listCreateSchema = z.object({

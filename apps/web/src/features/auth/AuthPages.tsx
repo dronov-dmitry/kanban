@@ -7,6 +7,11 @@ import type { SessionPayloadResponse } from '../../lib/api-types';
 import { useAuthStore } from '../../lib/auth-store';
 import { API_URL, GOOGLE_CLIENT_ID } from '../../lib/config';
 
+function withBasePath(path: string): string {
+  const base = import.meta.env.BASE_URL.replace(/\/$/, '');
+  return `${base}${path.startsWith('/') ? path : `/${path}`}`;
+}
+
 function errorMessage(error: unknown, t: (key: string) => string): string {
   if (error instanceof ApiError) {
     switch (error.code) {
@@ -21,6 +26,8 @@ function errorMessage(error: unknown, t: (key: string) => string): string {
         return t('errors.token');
       case 'email_unverified':
         return t('errors.emailUnverified');
+      case 'account_banned':
+        return t('errors.accountBanned');
       case 'network':
         return t('errors.network');
       default:
@@ -118,8 +125,13 @@ export function LoginPage() {
   const user = useAuthStore((state) => state.user);
 
   useEffect(() => {
-    if (user) void navigate({ to: '/app' });
-  }, [user, navigate]);
+    if (!user) return;
+    if (search.redirect) {
+      window.location.assign(withBasePath(search.redirect));
+      return;
+    }
+    void navigate({ to: '/app' });
+  }, [user, navigate, search.redirect]);
 
   const oauthError = search.oauth
     ? ({
@@ -128,6 +140,7 @@ export function LoginPage() {
         email_not_verified: t('auth.oauthEmailNotVerified'),
         provider_error: t('auth.oauthProviderError'),
         account_exists: t('auth.oauthAccountExists'),
+        banned: t('auth.oauthBanned'),
       }[search.oauth] ?? t('auth.oauthFailed'))
     : null;
 
@@ -156,7 +169,7 @@ export function LoginPage() {
 export function OAuthCallbackPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const search = useSearch({ strict: false }) as { code?: string };
+  const search = useSearch({ strict: false }) as { code?: string; redirect?: string };
   const setSession = useAuthStore((state) => state.setSession);
   const [error, setError] = useState<string | null>(null);
 
@@ -168,10 +181,14 @@ export function OAuthCallbackPage() {
     void post<SessionPayloadResponse>('/v1/auth/oauth/exchange', { code: search.code })
       .then(async (response) => {
         setSession(response);
+        if (search.redirect) {
+          window.location.assign(withBasePath(search.redirect));
+          return;
+        }
         await navigate({ to: '/app' });
       })
       .catch((caught) => setError(errorMessage(caught, t)));
-  }, [search.code, setSession, navigate, t]);
+  }, [search.code, search.redirect, setSession, navigate, t]);
 
   return (
     <AuthShell>

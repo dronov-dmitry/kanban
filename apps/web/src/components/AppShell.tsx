@@ -10,6 +10,7 @@ import { clearOfflineData, outboxCount } from '../lib/offline';
 import {
   useBoards,
   useNotifications,
+  useSharedBoards,
   useUnreadCount,
   useUpdateSettings,
   useWorkspaces,
@@ -33,6 +34,7 @@ export function AppShell() {
   const current =
     workspaces.data?.data.find((workspace) => workspace.slug === params.wsSlug) ?? null;
   const boards = useBoards(current?.id);
+  const sharedBoards = useSharedBoards(Boolean(auth.user));
   const notifications = useNotifications(Boolean(auth.user));
   const unread = useUnreadCount(Boolean(auth.user));
 
@@ -134,6 +136,10 @@ export function AppShell() {
 
   const role = current?.role ?? 'viewer';
   const isAdmin = role === 'owner' || role === 'admin';
+  const sharedBoardList = (sharedBoards.data?.data ?? []).filter(
+    (board) => !(boards.data?.data ?? []).some((item) => item.id === board.id),
+  );
+  const isStaff = auth.user?.is_staff === 1;
 
   async function createWorkspace() {
     if (!workspaceName.trim()) return;
@@ -180,13 +186,21 @@ export function AppShell() {
     await post('/v1/notifications/read', { ids: [notification.id] });
     await queryClient.invalidateQueries({ queryKey: ['notifications'] });
     setNotificationsOpen(false);
-    let payload: { board_id?: string; card_id?: string } = {};
+    let payload: { board_id?: string; card_id?: string; token?: string } = {};
     try {
       payload = JSON.parse(notification.payload_json);
     } catch {
       return;
     }
+    if (notification.type === 'service.invite' && payload.token) {
+      void navigate({ to: '/join/$token', params: { token: payload.token } });
+      return;
+    }
     if (!payload.board_id) return;
+    if (notification.type === 'board.access_rejected') {
+      toast.push(t('notifications.accessRejected'), { kind: 'danger' });
+      return;
+    }
     try {
       const snapshot = await get<BoardSnapshotResponse>(`/v1/boards/${payload.board_id}`);
       void navigate({
@@ -352,6 +366,46 @@ export function AppShell() {
             </>
           ) : null}
 
+          {sharedBoardList.length > 0 ? (
+            <>
+              <div className="nav-label">{t('workspace.sharedWithMe')}</div>
+              <nav className="nav" aria-label={t('workspace.sharedWithMe')}>
+                {sharedBoardList.slice(0, 8).map((board) => (
+                  <Link
+                    key={board.id}
+                    to="/app/$wsSlug/boards/$boardId"
+                    params={{ wsSlug: board.workspace_slug ?? '', boardId: board.id }}
+                    className={cn('nav-item', params.boardId === board.id && 'active')}
+                  >
+                    <span className="icon" aria-hidden="true">
+                      <span
+                        style={{
+                          width: 9,
+                          height: 9,
+                          borderRadius: 3,
+                          background: board.cover ?? 'var(--color-primary)',
+                          display: 'block',
+                        }}
+                      />
+                    </span>
+                    <span className="grow truncate">{board.name}</span>
+                  </Link>
+                ))}
+              </nav>
+            </>
+          ) : null}
+
+          {isStaff ? (
+            <nav className="nav" aria-label={t('nav.admin')}>
+              <Link to="/app/admin" className={cn('nav-item', path === '/app/admin' && 'active')}>
+                <span className="icon">
+                  <Icon name="shield" size={17} />
+                </span>
+                <span>{t('nav.admin')}</span>
+              </Link>
+            </nav>
+          ) : null}
+
           <div className="sidebar-footer">
             {!online ? (
               <span className="offline-badge">
@@ -399,6 +453,11 @@ export function AppShell() {
               >
                 {i18n.language === 'ru' ? 'English' : 'Русский'}
               </MenuItem>
+              {isStaff ? (
+                <MenuItem icon="shield" onClick={() => void navigate({ to: '/app/admin' })}>
+                  {t('nav.admin')}
+                </MenuItem>
+              ) : null}
               <div className="menu-separator" />
               <MenuItem icon="logout" onClick={() => void logout()}>
                 {t('common.logout')}
@@ -522,6 +581,11 @@ export function AppShell() {
                 <MenuItem icon="key" onClick={() => void navigate({ to: '/app/me' })}>
                   {t('settings.changePassword')}
                 </MenuItem>
+                {isStaff ? (
+                  <MenuItem icon="shield" onClick={() => void navigate({ to: '/app/admin' })}>
+                    {t('nav.admin')}
+                  </MenuItem>
+                ) : null}
                 <MenuItem icon="logout" onClick={() => void logout()}>
                   {t('common.logout')}
                 </MenuItem>
@@ -665,7 +729,17 @@ function NotificationItem({
       ? t('notifications.assigned')
       : notification.type === 'comment'
         ? t('notifications.newComment')
-        : notification.type;
+        : notification.type === 'board.access_requested'
+          ? t('notifications.accessRequested')
+          : notification.type === 'board.access_approved'
+            ? t('notifications.accessApproved')
+            : notification.type === 'board.access_rejected'
+              ? t('notifications.accessRejected')
+              : notification.type === 'board.shared'
+                ? t('notifications.boardShared')
+                : notification.type === 'service.invite'
+                  ? t('notifications.serviceInvite')
+                  : notification.type;
   return (
     <button
       type="button"

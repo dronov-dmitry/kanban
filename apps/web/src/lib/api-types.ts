@@ -5,6 +5,7 @@ import type {
   CardDetail,
   Member,
   Role,
+  UserBan,
   UserSettings,
   Workspace,
 } from '@kanban/shared';
@@ -16,6 +17,21 @@ export interface WorkspaceSummary extends Workspace {
 
 export interface BoardSummary extends Board {
   card_count?: number;
+  workspace_name?: string;
+  workspace_slug?: string;
+}
+
+export interface BoardAccessRequestRow {
+  id: string;
+  board_id: string;
+  user_id: string;
+  display_name: string;
+  email: string;
+  avatar_url: string | null;
+  message: string | null;
+  status: 'pending' | 'approved' | 'rejected';
+  created_at: number;
+  resolved_at: number | null;
 }
 
 export interface BoardSnapshotResponse {
@@ -29,6 +45,9 @@ export interface BoardSnapshotResponse {
   attachment_counts: Array<{ card_id: string; count: number }>;
   comment_counts: Array<{ card_id: string; count: number }>;
   members: Member[];
+  board_members: Member[];
+  access_requests: BoardAccessRequestRow[];
+  can_manage: boolean;
   workspace: { id: string; name: string; slug: string };
   role: Role;
 }
@@ -92,6 +111,71 @@ export interface NotificationRow {
   created_at: number;
 }
 
+export interface UserBanRow extends UserBan {
+  banned_by_name?: string;
+}
+
+export interface ServiceInviteRow {
+  id: string;
+  email: string | null;
+  note: string | null;
+  expires_at: number;
+  accepted_at: number | null;
+  accepted_by: string | null;
+  accepted_by_name: string | null;
+  created_at: number;
+  url?: string;
+}
+
+export interface PublicBoardResponse {
+  board: {
+    id: string;
+    name: string;
+    description: string | null;
+    cover: string | null;
+    visibility: string;
+    created_at: number;
+    updated_at: number;
+  };
+  workspace: { name: string; slug: string };
+  lists: Array<import('@kanban/shared').BoardList>;
+  cards: Card[];
+  labels: Array<import('@kanban/shared').CardLabel>;
+  card_labels: Array<{ card_id: string; label_id: string }>;
+  card_assignees: Array<{
+    card_id: string;
+    user_id: string;
+    display_name: string;
+    avatar_url: string | null;
+  }>;
+  checklists: Array<import('@kanban/shared').Checklist>;
+}
+
+export interface PublicBoardRequestState {
+  hasAccess: boolean;
+  role: string | null;
+  request: {
+    id: string;
+    status: 'pending' | 'approved' | 'rejected';
+    message: string | null;
+    created_at: number;
+    resolved_at: number | null;
+  } | null;
+}
+
+export interface PublicServiceInvite {
+  valid: boolean;
+  expired?: boolean;
+  accepted?: boolean;
+  inviter_name?: string;
+  inviter_avatar_url?: string | null;
+  email?: string | null;
+  note?: string | null;
+  expires_at?: number;
+  accepted_at?: number | null;
+  reason?: string;
+}
+
 export interface ArchiveResponse {
   boards: Board[];
   trashedBoards: Board[];
@@ -109,4 +193,25 @@ export interface SessionPayloadResponse extends ProfileResponse {
   refreshToken: string;
   refreshTokenId: string;
   expiresAt: number;
+}
+
+export interface AdminUserRow {
+  id: string;
+  email: string;
+  display_name: string;
+  avatar_url: string | null;
+  is_staff: number;
+  created_at: number;
+  workspace_count: number;
+}
+
+export interface AdminBanRow {
+  id: string;
+  email: string;
+  reason: string | null;
+  workspace_id: string | null;
+  banned_by: string;
+  banned_by_name: string | null;
+  expires_at: number | null;
+  created_at: number;
 }

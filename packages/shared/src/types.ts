@@ -1,6 +1,8 @@
 import type { Priority } from './filters';
 
 export type Role = 'owner' | 'admin' | 'member' | 'viewer';
+export type BoardVisibility = 'private' | 'public';
+export type BoardMemberRole = 'viewer' | 'member';
 export type BoardTemplate = 'empty' | 'development' | 'content' | 'personal' | 'hiring' | 'sprint';
 export type ThemePreference = 'light' | 'dark' | 'system';
 export type Density = 'comfortable' | 'compact';
@@ -65,6 +67,8 @@ export interface Board {
   description: string | null;
   cover: string | null;
   position: string;
+  visibility: BoardVisibility;
+  public_token?: string | null;
   is_favorite: number;
   prefs_json: string;
   created_by: string;
@@ -73,6 +77,31 @@ export interface Board {
   archived_at: number | null;
   deleted_at?: number | null;
   card_count?: number;
+  role?: Role;
+}
+
+export interface BoardMember {
+  board_id: string;
+  user_id: string;
+  display_name: string;
+  email: string;
+  avatar_url: string | null;
+  role: BoardMemberRole;
+  granted_by: string | null;
+  created_at: number;
+}
+
+export interface BoardAccessRequest {
+  id: string;
+  board_id: string;
+  user_id: string;
+  display_name: string;
+  email: string;
+  avatar_url: string | null;
+  message: string | null;
+  status: 'pending' | 'approved' | 'rejected';
+  created_at: number;
+  resolved_at: number | null;
 }
 
 export interface BoardList {
@@ -177,6 +206,30 @@ export interface Notification {
   payload_json: string;
   read_at: number | null;
   created_at: number;
+}
+
+export interface UserBan {
+  id: string;
+  email: string;
+  reason: string | null;
+  workspace_id: string | null;
+  banned_by: string;
+  banned_by_name?: string;
+  expires_at: number | null;
+  created_at: number;
+}
+
+export interface ServiceInvite {
+  id: string;
+  email: string | null;
+  note: string | null;
+  invited_by: string;
+  invited_by_name?: string;
+  expires_at: number;
+  accepted_at: number | null;
+  accepted_by: string | null;
+  created_at: number;
+  url?: string;
 }
 
 /** Snapshot returned by GET /v1/boards/:id. */

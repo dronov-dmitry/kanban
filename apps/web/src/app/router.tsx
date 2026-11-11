@@ -46,7 +46,16 @@ const ProfilePage = lazyRouteComponent(
   () => import('../features/profile/ProfilePage'),
   'ProfilePage',
 );
+const AdminUsersPage = lazyRouteComponent(
+  () => import('../features/admin/AdminUsersPage'),
+  'AdminUsersPage',
+);
 const InvitePage = lazyRouteComponent(() => import('../features/invite/InvitePage'), 'InvitePage');
+const PublicBoardPage = lazyRouteComponent(
+  () => import('../features/public/PublicBoardPage'),
+  'PublicBoardPage',
+);
+const JoinPage = lazyRouteComponent(() => import('../features/public/JoinPage'), 'JoinPage');
 
 const rootRoute = createRootRoute({
   component: () => <Outlet />,
@@ -113,6 +122,16 @@ const inviteRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/invite/$token',
   component: InvitePage,
+});
+const publicBoardRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/share/board/$token',
+  component: PublicBoardPage,
+});
+const joinRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/join/$token',
+  component: JoinPage,
 });
 
 const appRoute = createRoute({
@@ -184,6 +203,12 @@ const profileRoute = createRoute({
   component: ProfilePage,
 });
 
+const adminRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: 'admin',
+  component: AdminUsersPage,
+});
+
 const routeTree = rootRoute.addChildren([
   indexRoute,
   loginRoute,
@@ -192,9 +217,12 @@ const routeTree = rootRoute.addChildren([
   verifyRoute,
   oauthRoute,
   inviteRoute,
+  publicBoardRoute,
+  joinRoute,
   appRoute.addChildren([
     appIndexRoute,
     profileRoute,
+    adminRoute,
     workspaceRoute,
     workspaceMyRoute,
     workspaceSearchRoute,

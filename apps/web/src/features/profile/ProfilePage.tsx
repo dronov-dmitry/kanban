@@ -5,7 +5,7 @@ import { useTranslation } from 'react-i18next';
 import { Avatar, Button, EmptyState, Icon, Modal, useToast } from '../../components/ui';
 import { setLanguage } from '../../i18n';
 import { del, downloadWithAuth, get, patch, post } from '../../lib/api';
-import type { IdentityInfo, SessionInfo } from '../../lib/api-types';
+import type { IdentityInfo, ServiceInviteRow, SessionInfo } from '../../lib/api-types';
 import { useAuthStore } from '../../lib/auth-store';
 import { GOOGLE_CLIENT_ID } from '../../lib/config';
 import { clearOfflineData } from '../../lib/offline';
@@ -41,6 +41,9 @@ export function ProfilePage() {
   const [name, setName] = useState(auth.user?.display_name ?? '');
   const [timezone, setTimezone] = useState(auth.user?.timezone ?? 'Europe/Moscow');
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const [inviteEmail, setInviteEmail] = useState('');
+  const [inviteNote, setInviteNote] = useState('');
+  const [createdInviteUrl, setCreatedInviteUrl] = useState('');
 
   const identities = useQuery({
     queryKey: ['identities'],
@@ -49,6 +52,10 @@ export function ProfilePage() {
   const sessions = useQuery({
     queryKey: ['sessions'],
     queryFn: () => get<{ data: SessionInfo[] }>('/v1/me/sessions'),
+  });
+  const serviceInvites = useQuery({
+    queryKey: ['service-invites'],
+    queryFn: () => get<{ data: ServiceInviteRow[] }>('/v1/service-invites'),
   });
 
   useEffect(() => {
@@ -117,6 +124,31 @@ export function ProfilePage() {
 
   async function exportData() {
     await downloadWithAuth('/v1/me/export', 'kanban-export.json');
+  }
+
+  async function createServiceInvite() {
+    try {
+      const response = await post<{ invite: ServiceInviteRow & { url: string } }>(
+        '/v1/service-invites',
+        {
+          email: inviteEmail.trim() || undefined,
+          note: inviteNote.trim() || undefined,
+        },
+      );
+      setCreatedInviteUrl(response.invite.url);
+      setInviteEmail('');
+      setInviteNote('');
+      void navigator.clipboard.writeText(response.invite.url);
+      await queryClient.invalidateQueries({ queryKey: ['service-invites'] });
+      toast.push(t('common.copied'), { kind: 'success' });
+    } catch (error: any) {
+      toast.push(error?.problem?.detail ?? t('errors.generic'), { kind: 'danger' });
+    }
+  }
+
+  async function revokeServiceInvite(id: string) {
+    await del(`/v1/service-invites/${id}`);
+    await queryClient.invalidateQueries({ queryKey: ['service-invites'] });
   }
 
   async function deleteAccount() {
@@ -316,6 +348,78 @@ export function ProfilePage() {
               </div>
             );
           })}
+        </section>
+
+        <section className="card-panel">
+          <h2 style={{ fontSize: 16, marginBottom: 6 }}>{t('settings.inviteToService')}</h2>
+          <p className="small muted" style={{ marginBottom: 12 }}>
+            {t('settings.inviteToServiceHint')}
+          </p>
+          <div className="stack">
+            <input
+              className="input"
+              type="email"
+              placeholder={t('settings.inviteEmail')}
+              value={inviteEmail}
+              onChange={(event) => setInviteEmail(event.target.value)}
+            />
+            <input
+              className="input"
+              placeholder={t('settings.inviteNote')}
+              value={inviteNote}
+              onChange={(event) => setInviteNote(event.target.value)}
+            />
+            <Button variant="primary" onClick={() => void createServiceInvite()}>
+              {t('settings.createInviteLink')}
+            </Button>
+          </div>
+          {createdInviteUrl ? (
+            <div className="alert info" style={{ marginTop: 12 }}>
+              <div className="spread">
+                <span className="small">{t('settings.inviteLinkLabel')}</span>
+                <Button
+                  size="sm"
+                  icon="copy"
+                  onClick={() => void navigator.clipboard.writeText(createdInviteUrl)}
+                >
+                  {t('common.copy')}
+                </Button>
+              </div>
+              <div className="mono truncate" style={{ marginTop: 6 }}>
+                {createdInviteUrl}
+              </div>
+            </div>
+          ) : null}
+          <hr className="divider" />
+          {(serviceInvites.data?.data ?? []).length === 0 ? (
+            <p className="small subtle">{t('common.noData')}</p>
+          ) : (
+            (serviceInvites.data?.data ?? []).map((invite) => (
+              <div className="member-row" key={invite.id}>
+                <span className="avatar sm">
+                  <Icon name="link" size={13} />
+                </span>
+                <div className="grow" style={{ minWidth: 0 }}>
+                  <div className="small strong truncate">
+                    {invite.email ?? t('settings.inviteLinkLabel')}
+                  </div>
+                  <div className="caption subtle">
+                    {invite.accepted_at
+                      ? `${t('settings.inviteAccepted')} · ${invite.accepted_by_name ?? ''}`
+                      : `${t('settings.inviteActive')} · ${formatDateTime(invite.expires_at, i18n.language)}`}
+                  </div>
+                </div>
+                {!invite.accepted_at ? (
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    icon="trash"
+                    onClick={() => void revokeServiceInvite(invite.id)}
+                  />
+                ) : null}
+              </div>
+            ))
+          )}
         </section>
 
         <section className="card-panel">

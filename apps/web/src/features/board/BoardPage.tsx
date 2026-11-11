@@ -20,6 +20,7 @@ import {
 import { CSS } from '@dnd-kit/utilities';
 import {
   type BoardList,
+  type BoardVisibility,
   type Card,
   type CardLabel,
   countActiveFilters,
@@ -108,6 +109,15 @@ export function BoardPage() {
   const [settingsName, setSettingsName] = useState('');
   const [settingsDescription, setSettingsDescription] = useState('');
   const [settingsCover, setSettingsCover] = useState(LIST_COLORS[0]!);
+  const [settingsVisibility, setSettingsVisibility] = useState<BoardVisibility>('private');
+  const [shareOpen, setShareOpen] = useState(false);
+  const [shareEmails, setShareEmails] = useState('');
+  const [shareRole, setShareRole] = useState<'viewer' | 'member'>('viewer');
+  const [shareResult, setShareResult] = useState<{
+    link: string;
+    results: Array<{ email: string; status: string }>;
+  } | null>(null);
+  const [requestBusy, setRequestBusy] = useState<string | null>(null);
   const [activeCard, setActiveCard] = useState<Card | null>(null);
   const [activeList, setActiveList] = useState<BoardList | null>(null);
   const [focusedList, setFocusedList] = useState<string | null>(null);
@@ -227,7 +237,11 @@ export function BoardPage() {
   );
 
   const activeFilters = countActiveFilters(filters);
-  const canWrite = role === 'owner' || role === 'admin' || role === 'member';
+  const effectiveRole = snapshot?.role ?? role;
+  const canWrite =
+    effectiveRole === 'owner' || effectiveRole === 'admin' || effectiveRole === 'member';
+  const canManageBoard = snapshot?.can_manage ?? false;
+  const accessRequests = snapshot?.access_requests ?? [];
 
   function go(next: BoardSearch, replace = false) {
     void navigate({
@@ -571,15 +585,22 @@ export function BoardPage() {
 
   async function saveBoardSettings() {
     try {
-      await patch(`/v1/boards/${boardId}`, {
+      const payload: Record<string, unknown> = {
         name: settingsName.trim(),
         description: settingsDescription.trim() || null,
         cover: settingsCover,
-      });
+      };
+      if (canManageBoard) payload.visibility = settingsVisibility;
+      await patch(`/v1/boards/${boardId}`, payload);
       setBoardSettingsOpen(false);
       await queryClient.invalidateQueries({ queryKey: ['board', boardId] });
-    } catch {
-      toast.push(t('errors.generic'), { kind: 'danger' });
+    } catch (error) {
+      toast.push(
+        error instanceof ApiError
+          ? (error.problem.detail ?? t('errors.generic'))
+          : t('errors.generic'),
+        { kind: 'danger' },
+      );
     }
   }
 
@@ -599,9 +620,102 @@ export function BoardPage() {
     }
   }
 
-  function copyBoardLink() {
-    void navigator.clipboard.writeText(window.location.href);
+  function shareLink(): string {
+    const current = snapshot?.board;
+    if (current?.visibility === 'public' && current.public_token) {
+      return new URL(
+        `${import.meta.env.BASE_URL}share/board/${current.public_token}`,
+        window.location.origin,
+      ).toString();
+    }
+    return new URL(
+      `${import.meta.env.BASE_URL}app/${snapshot?.workspace.slug ?? ''}/boards/${boardId}`,
+      window.location.origin,
+    ).toString();
+  }
+
+  function copyShareLink() {
+    void navigator.clipboard.writeText(shareLink());
     toast.push(t('common.copied'), { kind: 'success' });
+  }
+
+  async function changeVisibility(next: BoardVisibility) {
+    try {
+      await patch(`/v1/boards/${boardId}`, { visibility: next });
+      setSettingsVisibility(next);
+      setShareResult(null);
+      await queryClient.invalidateQueries({ queryKey: ['board', boardId] });
+      toast.push(t('common.saved'), { kind: 'success' });
+    } catch (error) {
+      toast.push(
+        error instanceof ApiError
+          ? (error.problem.detail ?? t('errors.generic'))
+          : t('errors.generic'),
+        { kind: 'danger' },
+      );
+    }
+  }
+
+  async function sendShareLinks() {
+    const emails = shareEmails
+      .split(/[\s,;]+/)
+      .map((value) => value.trim())
+      .filter(Boolean);
+    if (emails.length === 0) return;
+    try {
+      const response = await post<{
+        link: string;
+        results: Array<{ email: string; status: string }>;
+      }>(`/v1/boards/${boardId}/share`, { emails, role: shareRole });
+      setShareResult(response);
+      setShareEmails('');
+      await queryClient.invalidateQueries({ queryKey: ['board', boardId] });
+      setShareOpen(true);
+      toast.push(t('common.saved'), { kind: 'success' });
+    } catch (error) {
+      toast.push(
+        error instanceof ApiError
+          ? (error.problem.detail ?? t('errors.generic'))
+          : t('errors.generic'),
+        { kind: 'danger' },
+      );
+    }
+  }
+
+  async function approveAccessRequest(requestId: string, nextRole: 'viewer' | 'member') {
+    setRequestBusy(requestId);
+    try {
+      await post(`/v1/boards/${boardId}/access-requests/${requestId}/approve`, { role: nextRole });
+      await queryClient.invalidateQueries({ queryKey: ['board', boardId] });
+      toast.push(t('board.accessApproved'), { kind: 'success' });
+    } catch (error) {
+      toast.push(
+        error instanceof ApiError
+          ? (error.problem.detail ?? t('errors.generic'))
+          : t('errors.generic'),
+        { kind: 'danger' },
+      );
+    } finally {
+      setRequestBusy(null);
+    }
+  }
+
+  async function rejectAccessRequest(requestId: string) {
+    setRequestBusy(requestId);
+    try {
+      await post(`/v1/boards/${boardId}/access-requests/${requestId}/reject`);
+      await queryClient.invalidateQueries({ queryKey: ['board', boardId] });
+      toast.push(t('board.accessRejected'), { kind: 'success' });
+    } catch (error) {
+      toast.push(
+        error instanceof ApiError
+          ? (error.problem.detail ?? t('errors.generic'))
+          : t('errors.generic'),
+        { kind: 'danger' },
+      );
+    } finally {
+      setRequestBusy(null);
+    }
   }
 
   async function assignMe(cardId: string) {
@@ -713,11 +827,20 @@ export function BoardPage() {
     <div className="board-page">
       <div className="board-toolbar">
         <div className="breadcrumbs">
-          <Link to="/app/$wsSlug" params={{ wsSlug }}>
-            {workspace?.name ?? snapshot.workspace.name}
-          </Link>
+          {workspace ? (
+            <Link to="/app/$wsSlug" params={{ wsSlug }}>
+              {workspace.name}
+            </Link>
+          ) : (
+            <span>{snapshot.workspace.name}</span>
+          )}
           <Icon name="chevron-right" size={13} />
           <span className="current">{board.name}</span>
+          {board.visibility === 'public' ? (
+            <span className="badge" style={{ marginLeft: 4 }}>
+              {t('board.public')}
+            </span>
+          ) : null}
           {board.is_favorite ? <span style={{ color: 'var(--color-warning)' }}>★</span> : null}
         </div>
 
@@ -760,8 +883,13 @@ export function BoardPage() {
               background: realtime.connected ? 'var(--color-success)' : 'var(--color-warning)',
             }}
           />
-          <Button size="sm" icon="user" onClick={copyBoardLink}>
+          <Button size="sm" icon="user" onClick={() => setShareOpen(true)}>
             <span className="hide-mobile">{t('board.share')}</span>
+            {accessRequests.length > 0 ? (
+              <span className="badge primary" style={{ marginLeft: 4 }}>
+                {accessRequests.length}
+              </span>
+            ) : null}
           </Button>
           <Menu
             trigger={(props) => (
@@ -774,6 +902,7 @@ export function BoardPage() {
                 setSettingsName(board.name);
                 setSettingsDescription(board.description ?? '');
                 setSettingsCover(board.cover ?? LIST_COLORS[0]!);
+                setSettingsVisibility(board.visibility ?? 'private');
                 setBoardSettingsOpen(true);
               }}
             >
@@ -1337,6 +1466,24 @@ export function BoardPage() {
             />
           </div>
           <div>
+            <label className="label" htmlFor="board-settings-visibility">
+              {t('board.visibility')}
+            </label>
+            <select
+              id="board-settings-visibility"
+              className="select"
+              value={settingsVisibility}
+              onChange={(event) => setSettingsVisibility(event.target.value as BoardVisibility)}
+              disabled={!canManageBoard}
+            >
+              <option value="private">{t('board.private')}</option>
+              <option value="public">{t('board.public')}</option>
+            </select>
+            <p className="caption subtle" style={{ marginTop: 4 }}>
+              {settingsVisibility === 'public' ? t('board.publicHint') : t('board.privateHint')}
+            </p>
+          </div>
+          <div>
             <span className="label">{t('workspace.cover')}</span>
             <div className="row wrap">
               {LIST_COLORS.map((color) => (
@@ -1360,6 +1507,157 @@ export function BoardPage() {
               ))}
             </div>
           </div>
+        </div>
+      </Modal>
+
+      <Modal
+        open={shareOpen}
+        onClose={() => {
+          setShareOpen(false);
+          setShareResult(null);
+        }}
+        title={t('board.share')}
+        footer={
+          <Button
+            variant="ghost"
+            onClick={() => {
+              setShareOpen(false);
+              setShareResult(null);
+            }}
+          >
+            {t('common.close')}
+          </Button>
+        }
+      >
+        <div className="stack">
+          <div className="spread">
+            <span className="label">{t('board.visibility')}</span>
+            <div className="row">
+              <button
+                type="button"
+                className={cn('chip', board.visibility !== 'public' && 'active')}
+                disabled={!canManageBoard}
+                onClick={() => void changeVisibility('private')}
+              >
+                {t('board.private')}
+              </button>
+              <button
+                type="button"
+                className={cn('chip', board.visibility === 'public' && 'active')}
+                disabled={!canManageBoard}
+                onClick={() => void changeVisibility('public')}
+              >
+                {t('board.public')}
+              </button>
+            </div>
+          </div>
+          <p className="caption subtle">
+            {board.visibility === 'public' ? t('board.publicHint') : t('board.privateHint')}
+          </p>
+          <div>
+            <span className="label">{t('board.shareLink')}</span>
+            <div className="row">
+              <input
+                className="input"
+                readOnly
+                value={shareLink()}
+                onFocus={(event) => event.currentTarget.select()}
+              />
+              <Button size="sm" icon="copy" onClick={copyShareLink}>
+                {t('common.copy')}
+              </Button>
+            </div>
+          </div>
+          <hr className="divider" />
+          <div>
+            <span className="label">{t('board.sendLinkTo')}</span>
+            <input
+              className="input"
+              placeholder="user@example.com, ..."
+              value={shareEmails}
+              onChange={(event) => setShareEmails(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter') void sendShareLinks();
+              }}
+            />
+          </div>
+          <div className="row">
+            <select
+              className="select"
+              value={shareRole}
+              onChange={(event) => setShareRole(event.target.value as 'viewer' | 'member')}
+            >
+              <option value="viewer">{t('board.canView')}</option>
+              <option value="member">{t('board.canEdit')}</option>
+            </select>
+            <Button
+              variant="primary"
+              onClick={() => void sendShareLinks()}
+              disabled={!shareEmails.trim()}
+            >
+              {t('common.send')}
+            </Button>
+          </div>
+          {shareResult ? (
+            <div className="alert info" style={{ display: 'grid', gap: 6 }}>
+              {shareResult.results.map((row) => (
+                <div className="spread small" key={row.email}>
+                  <span className="truncate">{row.email}</span>
+                  <span
+                    className={cn(
+                      'badge',
+                      row.status === 'sent' || row.status === 'updated' ? 'success' : 'warning',
+                    )}
+                  >
+                    {t(`board.shareStatus.${row.status}`)}
+                  </span>
+                </div>
+              ))}
+            </div>
+          ) : null}
+          {canManageBoard ? (
+            <>
+              <hr className="divider" />
+              <div className="spread">
+                <span className="label">{t('board.accessRequests')}</span>
+                <span className="badge">{accessRequests.length}</span>
+              </div>
+              {accessRequests.length === 0 ? (
+                <p className="caption subtle">{t('board.noAccessRequests')}</p>
+              ) : (
+                accessRequests.map((request) => (
+                  <div className="member-row" key={request.id}>
+                    <Avatar name={request.display_name} src={request.avatar_url} size="sm" />
+                    <div className="grow" style={{ minWidth: 0 }}>
+                      <div className="strong small truncate">{request.display_name}</div>
+                      <div className="caption subtle truncate">{request.email}</div>
+                      {request.message ? (
+                        <div className="caption" style={{ marginTop: 2 }}>
+                          {request.message}
+                        </div>
+                      ) : null}
+                    </div>
+                    <Button
+                      size="sm"
+                      variant="primary"
+                      disabled={requestBusy === request.id}
+                      onClick={() => void approveAccessRequest(request.id, 'member')}
+                    >
+                      {t('board.approve')}
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      disabled={requestBusy === request.id}
+                      onClick={() => void rejectAccessRequest(request.id)}
+                    >
+                      {t('board.reject')}
+                    </Button>
+                  </div>
+                ))
+              )}
+            </>
+          ) : null}
         </div>
       </Modal>
 

@@ -11,7 +11,9 @@ import type {
   InvitationSummary,
   NotificationRow,
   ProfileResponse,
+  ServiceInviteRow,
   SessionInfo,
+  UserBanRow,
   WorkspaceSummary,
 } from './api-types';
 import { useAuthStore } from './auth-store';
@@ -31,6 +33,31 @@ export function useBoards(workspaceId: string | undefined) {
     queryFn: () => get<{ data: BoardSummary[] }>(`/v1/workspaces/${workspaceId}/boards`),
     enabled: Boolean(workspaceId),
     staleTime: 15_000,
+  });
+}
+
+export function useSharedBoards(enabled = true) {
+  return useQuery({
+    queryKey: ['boards', 'shared'],
+    queryFn: () => get<{ data: BoardSummary[] }>('/v1/boards/shared'),
+    enabled,
+    staleTime: 15_000,
+  });
+}
+
+export function useWorkspaceBans(workspaceId: string | undefined, enabled: boolean) {
+  return useQuery({
+    queryKey: ['bans', workspaceId],
+    queryFn: () => get<{ data: UserBanRow[] }>(`/v1/workspaces/${workspaceId}/bans`),
+    enabled: Boolean(workspaceId) && enabled,
+  });
+}
+
+export function useServiceInvites(enabled: boolean) {
+  return useQuery({
+    queryKey: ['service-invites'],
+    queryFn: () => get<{ data: ServiceInviteRow[] }>('/v1/service-invites'),
+    enabled,
   });
 }
 

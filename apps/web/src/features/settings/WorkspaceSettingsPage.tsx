@@ -8,10 +8,10 @@ import { useWorkspace } from '../../components/workspace-context';
 import { del, patch, post } from '../../lib/api';
 import type { InvitationSummary } from '../../lib/api-types';
 import { useAuthStore } from '../../lib/auth-store';
-import { useAudit, useInvitations, useMembers } from '../../lib/queries';
+import { useAudit, useInvitations, useMembers, useWorkspaceBans } from '../../lib/queries';
 import { cn, formatDate, formatRelative } from '../../lib/utils';
 
-type Tab = 'general' | 'members' | 'invitations' | 'audit' | 'danger';
+type Tab = 'general' | 'members' | 'invitations' | 'bans' | 'audit' | 'danger';
 
 export function WorkspaceSettingsPage() {
   const { t, i18n } = useTranslation();
@@ -25,6 +25,7 @@ export function WorkspaceSettingsPage() {
   const members = useMembers(workspace?.id);
   const invitations = useInvitations(workspace?.id, role === 'owner' || role === 'admin');
   const audit = useAudit(workspace?.id, role === 'owner' || role === 'admin');
+  const bans = useWorkspaceBans(workspace?.id, role === 'owner' || role === 'admin');
 
   const [tab, setTab] = useState<Tab>((search.tab as Tab) || 'general');
   const [name, setName] = useState(workspace?.name ?? '');
@@ -35,6 +36,8 @@ export function WorkspaceSettingsPage() {
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [confirmName, setConfirmName] = useState('');
   const [transferTo, setTransferTo] = useState('');
+  const [banEmail, setBanEmail] = useState('');
+  const [banReason, setBanReason] = useState('');
 
   useEffect(() => {
     setName(workspace?.name ?? '');
@@ -55,6 +58,7 @@ export function WorkspaceSettingsPage() {
     { id: 'general', label: t('settings.general') },
     { id: 'members', label: t('settings.members') },
     { id: 'invitations', label: t('settings.invitations'), roles: ['owner', 'admin'] },
+    { id: 'bans', label: t('settings.bans'), roles: ['owner', 'admin'] },
     { id: 'audit', label: t('settings.audit'), roles: ['owner', 'admin'] },
     { id: 'danger', label: t('settings.danger') },
   ];
@@ -109,6 +113,28 @@ export function WorkspaceSettingsPage() {
   async function revokeInvite(id: string) {
     await del(`/v1/invitations/${id}`);
     await queryClient.invalidateQueries({ queryKey: ['invitations', workspace!.id] });
+  }
+
+  async function createBan() {
+    if (!banEmail.trim()) return;
+    try {
+      await post(`/v1/workspaces/${workspace!.id}/bans`, {
+        email: banEmail.trim(),
+        reason: banReason.trim() || undefined,
+      });
+      setBanEmail('');
+      setBanReason('');
+      await queryClient.invalidateQueries({ queryKey: ['bans', workspace!.id] });
+      await queryClient.invalidateQueries({ queryKey: ['members', workspace!.id] });
+      toast.push(t('common.saved'), { kind: 'success' });
+    } catch (error: any) {
+      toast.push(error?.problem?.detail ?? t('errors.generic'), { kind: 'danger' });
+    }
+  }
+
+  async function removeBan(id: string) {
+    await del(`/v1/workspaces/${workspace!.id}/bans/${id}`);
+    await queryClient.invalidateQueries({ queryKey: ['bans', workspace!.id] });
   }
 
   async function transferOwner() {
@@ -349,6 +375,65 @@ export function WorkspaceSettingsPage() {
                       variant="ghost"
                       icon="trash"
                       onClick={() => void revokeInvite(invitation.id)}
+                    />
+                  </div>
+                ))
+              )}
+            </div>
+          ) : null}
+
+          {tab === 'bans' ? (
+            <div className="card-panel">
+              <h2 style={{ fontSize: 16, marginBottom: 6 }}>{t('settings.bans')}</h2>
+              <p className="small muted" style={{ marginBottom: 12 }}>
+                {t('settings.bansHint')}
+              </p>
+              <div className="row wrap">
+                <input
+                  className="input"
+                  type="email"
+                  placeholder={t('common.email')}
+                  value={banEmail}
+                  onChange={(event) => setBanEmail(event.target.value)}
+                  onKeyDown={(event) => {
+                    if (event.key === 'Enter') void createBan();
+                  }}
+                />
+                <input
+                  className="input"
+                  placeholder={t('settings.banReason')}
+                  value={banReason}
+                  onChange={(event) => setBanReason(event.target.value)}
+                />
+                <Button
+                  variant="danger"
+                  onClick={() => void createBan()}
+                  disabled={!banEmail.trim()}
+                >
+                  {t('settings.banUser')}
+                </Button>
+              </div>
+              <hr className="divider" />
+              {(bans.data?.data ?? []).length === 0 ? (
+                <p className="small subtle">{t('settings.noBans')}</p>
+              ) : (
+                (bans.data?.data ?? []).map((ban) => (
+                  <div className="member-row" key={ban.id}>
+                    <span className="avatar sm">
+                      <Icon name="shield" size={13} />
+                    </span>
+                    <div className="grow" style={{ minWidth: 0 }}>
+                      <div className="small strong truncate">{ban.email}</div>
+                      <div className="caption subtle">
+                        {ban.reason ?? t('settings.banNoReason')} ·{' '}
+                        {formatDate(ban.created_at, i18n.language)}
+                      </div>
+                    </div>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      icon="trash"
+                      onClick={() => void removeBan(ban.id)}
                     />
                   </div>
                 ))
