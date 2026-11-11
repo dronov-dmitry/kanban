@@ -214,6 +214,10 @@ export function AppShell() {
       toast.push(t('notifications.workspaceInviteAccepted'), { kind: 'success' });
       return;
     }
+    if (notification.type === 'board.member_removed') {
+      toast.push(t('notifications.memberRemoved'), { kind: 'default' });
+      return;
+    }
     if (!payload.board_id) return;
     if (notification.type === 'board.shared' || notification.type === 'board.access_approved') {
       void navigate({
@@ -746,19 +750,21 @@ function NotificationItem({
             ? t('notifications.accessApproved')
             : notification.type === 'board.access_rejected'
               ? t('notifications.accessRejected')
-              : notification.type === 'board.shared'
-                ? t('notifications.boardShared')
-                : notification.type === 'board.invite_accepted'
-                  ? t('notifications.inviteAccepted')
-                  : notification.type === 'board.invite_declined'
-                    ? t('notifications.inviteDeclined')
-                    : notification.type === 'workspace.invite_accepted'
-                      ? t('notifications.workspaceInviteAccepted')
-                      : notification.type === 'workspace.invite_declined'
-                        ? t('notifications.workspaceInviteDeclined')
-                        : notification.type === 'service.invite'
-                          ? t('notifications.serviceInvite')
-                          : notification.type;
+              : notification.type === 'board.member_removed'
+                ? t('notifications.memberRemoved')
+                : notification.type === 'board.shared'
+                  ? t('notifications.boardShared')
+                  : notification.type === 'board.invite_accepted'
+                    ? t('notifications.inviteAccepted')
+                    : notification.type === 'board.invite_declined'
+                      ? t('notifications.inviteDeclined')
+                      : notification.type === 'workspace.invite_accepted'
+                        ? t('notifications.workspaceInviteAccepted')
+                        : notification.type === 'workspace.invite_declined'
+                          ? t('notifications.workspaceInviteDeclined')
+                          : notification.type === 'service.invite'
+                            ? t('notifications.serviceInvite')
+                            : notification.type;
   return (
     <button
       type="button"

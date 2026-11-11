@@ -1,4 +1,4 @@
-import type { Card, CardLabel } from '@kanban/shared';
+import type { Card, CardLabel, Checklist, Member } from '@kanban/shared';
 import { useQuery } from '@tanstack/react-query';
 import { useParams } from '@tanstack/react-router';
 import { useState } from 'react';
@@ -7,7 +7,8 @@ import { Avatar, Button, EmptyState, Icon, Modal, useToast } from '../../compone
 import { ApiError, get, post } from '../../lib/api';
 import type { PublicBoardRequestState, PublicBoardResponse } from '../../lib/api-types';
 import { useAuthStore } from '../../lib/auth-store';
-import { formatDue } from '../../lib/utils';
+import { formatDue, renderMarkdown } from '../../lib/utils';
+import { CardTile } from '../board/CardTile';
 
 function appHref(path: string): string {
   const base = import.meta.env.BASE_URL.replace(/\/$/, '');
@@ -22,6 +23,7 @@ export function PublicBoardPage() {
   const [requestOpen, setRequestOpen] = useState(false);
   const [requestMessage, setRequestMessage] = useState('');
   const [sending, setSending] = useState(false);
+  const [selectedCard, setSelectedCard] = useState<Card | null>(null);
 
   const boardQuery = useQuery({
     queryKey: ['public-board', token],
@@ -87,17 +89,32 @@ export function PublicBoardPage() {
     list.push(row.label_id);
     labelIdsByCard.set(row.card_id, list);
   }
-  const assigneesByCard = new Map<
-    string,
-    Array<{ display_name: string; avatar_url: string | null }>
-  >();
-  for (const row of data.card_assignees) {
-    const list = assigneesByCard.get(row.card_id) ?? [];
-    list.push({ display_name: row.display_name, avatar_url: row.avatar_url });
-    assigneesByCard.set(row.card_id, list);
-  }
   const request = requestQuery.data?.request ?? null;
   const hasAccess = requestQuery.data?.hasAccess ?? false;
+  const members: Member[] = [];
+  for (const row of data.card_assignees) {
+    if (members.some((member) => member.user_id === row.user_id)) continue;
+    members.push({
+      user_id: row.user_id,
+      display_name: row.display_name,
+      email: '',
+      avatar_url: row.avatar_url,
+      role: 'viewer',
+      joined_at: 0,
+    });
+  }
+  const checklistsByCard = new Map<string, Checklist[]>();
+  for (const checklist of data.checklists ?? []) {
+    const list = checklistsByCard.get(checklist.card_id) ?? [];
+    list.push(checklist);
+    checklistsByCard.set(checklist.card_id, list);
+  }
+  const assigneeIdsByCard = new Map<string, string[]>();
+  for (const row of data.card_assignees) {
+    const list = assigneeIdsByCard.get(row.card_id) ?? [];
+    list.push(row.user_id);
+    assigneeIdsByCard.set(row.card_id, list);
+  }
 
   return (
     <div style={{ minHeight: '100vh', background: 'var(--color-bg)' }}>
@@ -146,35 +163,148 @@ export function PublicBoardPage() {
             .filter((card) => card.list_id === list.id)
             .sort((a, b) => a.position.localeCompare(b.position));
           return (
-            <div className="column" key={list.id} style={{ width: 288, flex: 'none' }}>
-              <div className="spread" style={{ padding: '2px 4px 8px' }}>
-                <span className="strong small">{list.name}</span>
-                <span className="caption subtle">{cards.length}</span>
+            <div
+              className="column"
+              key={list.id}
+              style={{
+                width: 288,
+                flex: 'none',
+                borderTop: list.color ? `3px solid ${list.color}` : undefined,
+              }}
+            >
+              <div className="column-header">
+                <span className="column-title truncate">{list.name}</span>
+                <span className="column-count">{cards.length}</span>
               </div>
-              <div className="card-list">
-                {cards.map((card) => (
-                  <PublicCard
-                    key={card.id}
-                    card={card}
-                    labels={
-                      (labelIdsByCard.get(card.id) ?? [])
-                        .map((id) => labelsById.get(id))
-                        .filter(Boolean) as CardLabel[]
-                    }
-                    assignees={assigneesByCard.get(card.id) ?? []}
-                    locale={i18n.language}
-                  />
-                ))}
-                {cards.length === 0 ? (
-                  <span className="caption subtle" style={{ padding: 8 }}>
-                    {t('board.emptyBoard')}
-                  </span>
-                ) : null}
+              <div className="column-body">
+                <div className="card-list">
+                  {cards.map((card) => {
+                    const checklists = checklistsByCard.get(card.id) ?? [];
+                    const items = checklists.flatMap((checklist) => checklist.items);
+                    return (
+                      <CardTile
+                        key={card.id}
+                        card={card}
+                        labels={
+                          (labelIdsByCard.get(card.id) ?? [])
+                            .map((id) => labelsById.get(id))
+                            .filter(Boolean) as CardLabel[]
+                        }
+                        assignees={assigneeIdsByCard.get(card.id) ?? []}
+                        members={members}
+                        checklist={{
+                          done: items.filter((item) => item.is_done === 1).length,
+                          total: items.length,
+                        }}
+                        commentCount={0}
+                        attachmentCount={0}
+                        canWrite={false}
+                        onOpen={() => setSelectedCard(card)}
+                      />
+                    );
+                  })}
+                  {cards.length === 0 ? (
+                    <span className="caption subtle" style={{ padding: 8 }}>
+                      {t('board.emptyBoard')}
+                    </span>
+                  ) : null}
+                </div>
               </div>
             </div>
           );
         })}
       </div>
+
+      <Modal
+        open={Boolean(selectedCard)}
+        onClose={() => setSelectedCard(null)}
+        title={selectedCard?.title ?? ''}
+        footer={
+          <Button variant="ghost" onClick={() => setSelectedCard(null)}>
+            {t('common.close')}
+          </Button>
+        }
+      >
+        {selectedCard ? (
+          <div className="stack">
+            <div className="row wrap" style={{ gap: 6 }}>
+              {(labelIdsByCard.get(selectedCard.id) ?? [])
+                .map((id) => labelsById.get(id))
+                .filter(Boolean)
+                .map((label) => (
+                  <span
+                    key={label!.id}
+                    className="badge"
+                    style={{ background: `${label!.color}22`, color: label!.color }}
+                  >
+                    {label!.name}
+                  </span>
+                ))}
+            </div>
+            {selectedCard.description ? (
+              <div
+                className="markdown small"
+                dangerouslySetInnerHTML={{ __html: renderMarkdown(selectedCard.description) }}
+              />
+            ) : (
+              <p className="small subtle">{t('card.noDescription')}</p>
+            )}
+            <div className="row wrap" style={{ gap: 12 }}>
+              {selectedCard.due_date ? (
+                <span className="caption subtle">
+                  <Icon name="clock" size={12} /> {formatDue(selectedCard.due_date, i18n.language)}
+                </span>
+              ) : null}
+              {selectedCard.priority !== 'normal' ? (
+                <span className="caption subtle">
+                  {t(
+                    `card.priority${selectedCard.priority[0]!.toUpperCase()}${selectedCard.priority.slice(1)}`,
+                  )}
+                </span>
+              ) : null}
+            </div>
+            {members.filter((member) =>
+              (assigneeIdsByCard.get(selectedCard.id) ?? []).includes(member.user_id),
+            ).length > 0 ? (
+              <div>
+                <span className="field-label">{t('card.assignees')}</span>
+                <div className="row wrap" style={{ gap: 8, marginTop: 4 }}>
+                  {(assigneeIdsByCard.get(selectedCard.id) ?? []).map((id) => {
+                    const member = members.find((row) => row.user_id === id);
+                    if (!member) return null;
+                    return (
+                      <span className="row" key={id} style={{ gap: 5 }}>
+                        <Avatar
+                          name={member.display_name}
+                          src={member.avatar_url}
+                          size="sm"
+                        />
+                        <span className="small">{member.display_name}</span>
+                      </span>
+                    );
+                  })}
+                </div>
+              </div>
+            ) : null}
+            {(checklistsByCard.get(selectedCard.id) ?? []).map((checklist) => (
+              <div key={checklist.id}>
+                <span className="field-label">{checklist.title || t('card.checklist')}</span>
+                <div className="stack" style={{ gap: 4, marginTop: 4 }}>
+                  {checklist.items.map((item) => (
+                    <label
+                      key={item.id}
+                      className={item.is_done === 1 ? 'checkbox small muted' : 'checkbox small'}
+                    >
+                      <input type="checkbox" checked={item.is_done === 1} disabled readOnly />
+                      {item.text}
+                    </label>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : null}
+      </Modal>
 
       <Modal
         open={requestOpen}
@@ -200,60 +330,6 @@ export function PublicBoardPage() {
           onChange={(event) => setRequestMessage(event.target.value)}
         />
       </Modal>
-    </div>
-  );
-}
-
-function PublicCard({
-  card,
-  labels,
-  assignees,
-  locale,
-}: {
-  card: Card;
-  labels: CardLabel[];
-  assignees: Array<{ display_name: string; avatar_url: string | null }>;
-  locale: string;
-}) {
-  return (
-    <div
-      className="card"
-      style={{ borderLeft: `3px solid ${labels[0]?.color ?? 'var(--color-border)'}` }}
-    >
-      <div className="strong small">{card.title}</div>
-      {card.description ? (
-        <div className="caption muted clamp-2" style={{ marginTop: 3 }}>
-          {card.description}
-        </div>
-      ) : null}
-      {labels.length > 0 ? (
-        <div className="row wrap" style={{ gap: 4, marginTop: 6 }}>
-          {labels.map((label) => (
-            <span
-              key={label.id}
-              className="badge"
-              style={{ background: `${label.color}22`, color: label.color }}
-            >
-              {label.name}
-            </span>
-          ))}
-        </div>
-      ) : null}
-      <div className="spread" style={{ marginTop: 8 }}>
-        <span className="caption subtle">
-          {card.due_date ? formatDue(card.due_date, locale) : ''}
-        </span>
-        <span className="avatar-stack">
-          {assignees.slice(0, 3).map((assignee, index) => (
-            <Avatar
-              key={`${assignee.display_name}-${index}`}
-              name={assignee.display_name}
-              src={assignee.avatar_url}
-              size="sm"
-            />
-          ))}
-        </span>
-      </div>
     </div>
   );
 }

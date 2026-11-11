@@ -477,6 +477,7 @@
     "boardShared": "Вам отправили ссылку на доску",
     "inviteAccepted": "Приглашение на доску принято",
     "inviteDeclined": "Приглашение на доску отклонено",
+    "memberRemoved": "Вас исключили из доски",
     "workspaceInviteAccepted": "Приглашение в пространство принято",
     "workspaceInviteDeclined": "Приглашение в пространство отклонено",
     "serviceInvite": "Приглашение в сервис"

@@ -477,6 +477,7 @@
     "boardShared": "Board shared with you",
     "inviteAccepted": "Board invitation accepted",
     "inviteDeclined": "Board invitation declined",
+    "memberRemoved": "You were removed from the board",
     "workspaceInviteAccepted": "Workspace invitation accepted",
     "workspaceInviteDeclined": "Workspace invitation declined",
     "serviceInvite": "Service invitation"
