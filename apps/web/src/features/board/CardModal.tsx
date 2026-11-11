@@ -284,7 +284,9 @@ export function CardModal({ cardId, onClose }: { cardId: string; onClose: () => 
   async function duplicateCard() {
     if (!card) return;
     try {
-      await post(`/v1/cards/${card.id}/duplicate`);
+      await post(`/v1/cards/${card.id}/duplicate`, {
+        locale: i18n.language === 'en' ? 'en' : 'ru',
+      });
       await queryClient.invalidateQueries({ queryKey: ['board', card.board_id] });
       toast.push(t('card.duplicate'), { kind: 'success' });
       onClose();

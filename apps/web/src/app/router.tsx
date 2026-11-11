@@ -15,6 +15,7 @@ const LandingPage = lazyRouteComponent(
   () => import('../features/landing/LandingPage'),
   'LandingPage',
 );
+const AboutPage = lazyRouteComponent(() => import('../features/about/AboutPage'), 'AboutPage');
 const LoginPage = lazyRouteComponent(() => import('../features/auth/AuthPages'), 'LoginPage');
 const OAuthCallbackPage = lazyRouteComponent(
   () => import('../features/auth/AuthPages'),
@@ -55,6 +56,10 @@ const PublicBoardPage = lazyRouteComponent(
   () => import('../features/public/PublicBoardPage'),
   'PublicBoardPage',
 );
+const BoardInvitePage = lazyRouteComponent(
+  () => import('../features/public/BoardInvitePage'),
+  'BoardInvitePage',
+);
 const JoinPage = lazyRouteComponent(() => import('../features/public/JoinPage'), 'JoinPage');
 
 const rootRoute = createRootRoute({
@@ -83,6 +88,11 @@ const indexRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/',
   component: LandingPage,
+});
+const aboutRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/about',
+  component: AboutPage,
 });
 const loginRoute = createRoute({
   getParentRoute: () => rootRoute,
@@ -127,6 +137,11 @@ const publicBoardRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/share/board/$token',
   component: PublicBoardPage,
+});
+const boardInviteRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/share/board-link/$token',
+  component: BoardInvitePage,
 });
 const joinRoute = createRoute({
   getParentRoute: () => rootRoute,
@@ -211,6 +226,7 @@ const adminRoute = createRoute({
 
 const routeTree = rootRoute.addChildren([
   indexRoute,
+  aboutRoute,
   loginRoute,
   registerRoute,
   resetRoute,
@@ -218,6 +234,7 @@ const routeTree = rootRoute.addChildren([
   oauthRoute,
   inviteRoute,
   publicBoardRoute,
+  boardInviteRoute,
   joinRoute,
   appRoute.addChildren([
     appIndexRoute,

@@ -50,8 +50,16 @@ import {
   useToast,
 } from '../../components/ui';
 import { useWorkspace } from '../../components/workspace-context';
-import { ApiError, del, downloadWithAuth, OfflineQueuedError, patch, post } from '../../lib/api';
-import type { BoardSnapshotResponse } from '../../lib/api-types';
+import {
+  ApiError,
+  del,
+  downloadWithAuth,
+  get,
+  OfflineQueuedError,
+  patch,
+  post,
+} from '../../lib/api';
+import type { BoardShareLinkRow, BoardSnapshotResponse } from '../../lib/api-types';
 import { useAuthStore } from '../../lib/auth-store';
 import { useBoard, useMembers, useSavedViews } from '../../lib/queries';
 import { useBoardRealtime } from '../../lib/realtime';
@@ -71,7 +79,7 @@ type PendingMove = { cardId: string; listId: string; position: string; title: st
 type PendingAdd = { listId: string; title: string; limit: number; count: number };
 
 export function BoardPage() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { wsSlug, boardId = '' } = useParams({ strict: false }) as {
     wsSlug: string;
     boardId: string;
@@ -117,6 +125,7 @@ export function BoardPage() {
     link: string;
     results: Array<{ email: string; status: string }>;
   } | null>(null);
+  const [privateLinks, setPrivateLinks] = useState<BoardShareLinkRow[]>([]);
   const [requestBusy, setRequestBusy] = useState<string | null>(null);
   const [activeCard, setActiveCard] = useState<Card | null>(null);
   const [activeList, setActiveList] = useState<BoardList | null>(null);
@@ -572,7 +581,9 @@ export function BoardPage() {
 
   async function duplicateBoard() {
     try {
-      const response = await post<{ board_id: string }>(`/v1/boards/${boardId}/duplicate`);
+      const response = await post<{ board_id: string }>(`/v1/boards/${boardId}/duplicate`, {
+        locale: i18n.language === 'en' ? 'en' : 'ru',
+      });
       await queryClient.invalidateQueries({ queryKey: ['boards', workspace?.id] });
       await navigate({
         to: '/app/$wsSlug/boards/$boardId',
@@ -620,7 +631,7 @@ export function BoardPage() {
     }
   }
 
-  function shareLink(): string {
+  function publicShareLink(): string {
     const current = snapshot?.board;
     if (current?.visibility === 'public' && current.public_token) {
       return new URL(
@@ -628,15 +639,62 @@ export function BoardPage() {
         window.location.origin,
       ).toString();
     }
-    return new URL(
-      `${import.meta.env.BASE_URL}app/${snapshot?.workspace.slug ?? ''}/boards/${boardId}`,
-      window.location.origin,
-    ).toString();
+    return '';
   }
 
-  function copyShareLink() {
-    void navigator.clipboard.writeText(shareLink());
+  async function loadShareLinks() {
+    try {
+      const response = await get<{ data: BoardShareLinkRow[] }>(
+        `/v1/boards/${boardId}/share-links`,
+      );
+      setPrivateLinks(response.data);
+    } catch {
+      setPrivateLinks([]);
+    }
+  }
+
+  async function createPrivateShareLink(): Promise<BoardShareLinkRow | null> {
+    try {
+      const response = await post<{ link: BoardShareLinkRow }>(
+        `/v1/boards/${boardId}/share-links`,
+        { role: shareRole },
+      );
+      setPrivateLinks((current) => [
+        response.link,
+        ...current.filter((item) => item.id !== response.link.id),
+      ]);
+      toast.push(t('board.shareLinkCreated'), { kind: 'success' });
+      return response.link;
+    } catch (error) {
+      toast.push(
+        error instanceof ApiError
+          ? (error.problem.detail ?? t('errors.generic'))
+          : t('errors.generic'),
+        { kind: 'danger' },
+      );
+      return null;
+    }
+  }
+
+  async function revokePrivateShareLink(id: string) {
+    await del(`/v1/boards/${boardId}/share-links/${id}`);
+    setPrivateLinks((current) => current.filter((item) => item.id !== id));
+  }
+
+  async function copyShareLink(url?: string) {
+    let target = url ?? publicShareLink();
+    if (!target && snapshot?.board.visibility !== 'public') {
+      target = privateLinks[0]?.url ?? (await createPrivateShareLink())?.url ?? '';
+    }
+    if (!target) return;
+    void navigator.clipboard.writeText(target);
     toast.push(t('common.copied'), { kind: 'success' });
+  }
+
+  function openShare() {
+    setShareOpen(true);
+    setShareResult(null);
+    if (snapshot?.board.visibility !== 'public') void loadShareLinks();
   }
 
   async function changeVisibility(next: BoardVisibility) {
@@ -883,7 +941,7 @@ export function BoardPage() {
               background: realtime.connected ? 'var(--color-success)' : 'var(--color-warning)',
             }}
           />
-          <Button size="sm" icon="user" onClick={() => setShareOpen(true)}>
+          <Button size="sm" icon="user" onClick={openShare}>
             <span className="hide-mobile">{t('board.share')}</span>
             {accessRequests.length > 0 ? (
               <span className="badge primary" style={{ marginLeft: 4 }}>
@@ -915,7 +973,7 @@ export function BoardPage() {
               icon="download"
               onClick={() =>
                 void downloadWithAuth(
-                  `/v1/boards/${boardId}/export?format=json`,
+                  `/v1/boards/${boardId}/export?format=json&locale=${i18n.language === 'en' ? 'en' : 'ru'}`,
                   `${board.name}.json`,
                 )
               }
@@ -926,7 +984,7 @@ export function BoardPage() {
               icon="download"
               onClick={() =>
                 void downloadWithAuth(
-                  `/v1/boards/${boardId}/export?format=csv`,
+                  `/v1/boards/${boardId}/export?format=csv&locale=${i18n.language === 'en' ? 'en' : 'ru'}`,
                   `${board.name}.csv`,
                 )
               }
@@ -936,7 +994,10 @@ export function BoardPage() {
             <MenuItem
               icon="download"
               onClick={() =>
-                void downloadWithAuth(`/v1/boards/${boardId}/export?format=md`, `${board.name}.md`)
+                void downloadWithAuth(
+                  `/v1/boards/${boardId}/export?format=md&locale=${i18n.language === 'en' ? 'en' : 'ru'}`,
+                  `${board.name}.md`,
+                )
               }
             >
               {t('board.exportMd')}
@@ -1556,17 +1617,48 @@ export function BoardPage() {
           </p>
           <div>
             <span className="label">{t('board.shareLink')}</span>
-            <div className="row">
-              <input
-                className="input"
-                readOnly
-                value={shareLink()}
-                onFocus={(event) => event.currentTarget.select()}
-              />
-              <Button size="sm" icon="copy" onClick={copyShareLink}>
-                {t('common.copy')}
-              </Button>
-            </div>
+            {board.visibility === 'public' ? (
+              <div className="row">
+                <input
+                  className="input"
+                  readOnly
+                  value={publicShareLink()}
+                  onFocus={(event) => event.currentTarget.select()}
+                />
+                <Button size="sm" icon="copy" onClick={() => void copyShareLink()}>
+                  {t('common.copy')}
+                </Button>
+              </div>
+            ) : (
+              <div className="stack" style={{ gap: 6 }}>
+                {privateLinks.map((link) => (
+                  <div className="row" key={link.id}>
+                    <input
+                      className="input"
+                      readOnly
+                      value={link.url}
+                      onFocus={(event) => event.currentTarget.select()}
+                    />
+                    <Button size="sm" icon="copy" onClick={() => void copyShareLink(link.url)}>
+                      {t('common.copy')}
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      icon="trash"
+                      aria-label={t('common.remove')}
+                      onClick={() => void revokePrivateShareLink(link.id)}
+                    />
+                  </div>
+                ))}
+                <div className="row">
+                  <Button size="sm" variant="ghost" onClick={() => void createPrivateShareLink()}>
+                    {t('board.createShareLink')}
+                  </Button>
+                </div>
+                <p className="caption subtle">{t('board.shareLinkHint')}</p>
+              </div>
+            )}
           </div>
           <hr className="divider" />
           <div>

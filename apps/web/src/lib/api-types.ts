@@ -34,6 +34,28 @@ export interface BoardAccessRequestRow {
   resolved_at: number | null;
 }
 
+export interface BoardShareLinkRow {
+  id: string;
+  role: 'viewer' | 'member';
+  expires_at: number | null;
+  created_at: number;
+  url: string;
+}
+
+export interface BoardShareLinkInfo {
+  valid: boolean;
+  role: 'viewer' | 'member';
+  expires_at: number | null;
+  inviter_name: string | null;
+  board: {
+    id: string;
+    name: string;
+    description: string | null;
+    cover: string | null;
+  };
+  workspace: { name: string; slug: string };
+}
+
 export interface BoardSnapshotResponse {
   board: Board;
   lists: Array<import('@kanban/shared').BoardList>;

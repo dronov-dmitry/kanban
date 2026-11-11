@@ -166,6 +166,9 @@ export function LandingPage() {
           <a href="#faq" className="hide-mobile">
             FAQ
           </a>
+          <Link to="/about" className="hide-mobile">
+            {t('landing.navAbout')}
+          </Link>
           <Link to="/login" className="btn ghost sm">
             {t('landing.login')}
           </Link>
@@ -321,6 +324,7 @@ export function LandingPage() {
           © {new Date().getFullYear()} Kanban. {t('landing.footer')}
         </span>
         <span className="row" style={{ gap: 16 }}>
+          <Link to="/about">{t('landing.navAbout')}</Link>
           <Link to="/login">{t('landing.login')}</Link>
           <Link to="/login">{t('landing.start')}</Link>
           <a href="mailto:support@example.com">support@example.com</a>

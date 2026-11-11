@@ -62,6 +62,15 @@ export const boardCreateSchema = z.object({
   description: z.string().max(2000).nullable().optional(),
   cover: z.string().max(500).nullable().optional(),
   template: templateSchema.default('empty'),
+  locale: localeSchema.optional(),
+});
+
+export const boardDuplicateSchema = z.object({
+  locale: localeSchema.optional(),
+});
+
+export const cardDuplicateSchema = z.object({
+  locale: localeSchema.optional(),
 });
 
 export const boardVisibilitySchema = z.enum(['private', 'public']);
@@ -89,6 +98,11 @@ export const boardShareSchema = z.object({
   emails: z.array(emailSchema).min(1).max(20),
   role: boardMemberRoleSchema.default('viewer'),
   message: z.string().trim().max(500).optional(),
+});
+
+export const boardShareLinkSchema = z.object({
+  role: boardMemberRoleSchema.default('viewer'),
+  expiresInDays: z.number().int().min(1).max(365).optional(),
 });
 
 export const banCreateSchema = z.object({

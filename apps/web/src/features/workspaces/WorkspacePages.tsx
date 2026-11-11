@@ -342,7 +342,7 @@ function CreateBoardModal({
   open: boolean;
   onClose: () => void;
 }) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const toast = useToast();
@@ -361,6 +361,7 @@ function CreateBoardModal({
         {
           name: name.trim(),
           template,
+          locale: i18n.language === 'en' ? 'en' : 'ru',
           cover,
           description: description.trim() || null,
         },

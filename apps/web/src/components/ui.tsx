@@ -1,6 +1,7 @@
 import type { ButtonHTMLAttributes, ReactNode } from 'react';
 import { createContext, useCallback, useContext, useEffect, useId, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
+import { useTranslation } from 'react-i18next';
 import { cn, colorFromId, initials } from '../lib/utils';
 
 type IconName =
@@ -364,6 +365,7 @@ export function Modal({
   wide?: boolean;
   headerExtra?: ReactNode;
 }) {
+  const { t } = useTranslation();
   const titleId = useId();
   const dialogRef = useRef<HTMLDivElement>(null);
 
@@ -424,7 +426,13 @@ export function Modal({
         <div className="modal-header">
           <h2 id={titleId}>{title}</h2>
           {headerExtra}
-          <Button variant="ghost" size="sm" icon="close" aria-label="Close" onClick={onClose} />
+          <Button
+            variant="ghost"
+            size="sm"
+            icon="close"
+            aria-label={t('common.close')}
+            onClick={onClose}
+          />
         </div>
         <div className="modal-body">{children}</div>
         {footer ? <div className="modal-footer">{footer}</div> : null}
@@ -533,6 +541,7 @@ interface ToastApi {
 const ToastContext = createContext<ToastApi | null>(null);
 
 export function ToastProvider({ children }: { children: ReactNode }) {
+  const { t } = useTranslation();
   const [toasts, setToasts] = useState<ToastItem[]>([]);
 
   const dismiss = useCallback((id: string) => {
@@ -580,7 +589,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
             <button
               type="button"
               className="btn ghost sm"
-              aria-label="Close"
+              aria-label={t('common.close')}
               onClick={() => dismiss(toast.id)}
             >
               <Icon name="close" size={14} />

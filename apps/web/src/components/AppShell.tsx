@@ -458,6 +458,9 @@ export function AppShell() {
                   {t('nav.admin')}
                 </MenuItem>
               ) : null}
+              <MenuItem icon="board" onClick={() => void navigate({ to: '/about' })}>
+                {t('nav.about')}
+              </MenuItem>
               <div className="menu-separator" />
               <MenuItem icon="logout" onClick={() => void logout()}>
                 {t('common.logout')}

@@ -67,12 +67,6 @@ export default defineConfig({
         globPatterns: ['**/*.{js,css,html,svg,png,woff2}'],
         navigateFallback: 'index.html',
         navigateFallbackDenylist: [/^\/v1\//],
-        runtimeCaching: [
-          {
-            urlPattern: ({ url }) => url.origin === apiUrl && url.pathname.startsWith('/v1/'),
-            handler: 'NetworkOnly',
-          },
-        ],
       },
     }),
   ],
