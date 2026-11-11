@@ -36,6 +36,7 @@ export const settingsPatchSchema = z.object({
 
 export const workspaceCreateSchema = z.object({
   name: z.string().trim().min(1).max(80),
+  description: z.string().trim().max(2000).optional(),
   slug: z
     .string()
     .trim()
@@ -47,6 +48,7 @@ export const workspaceCreateSchema = z.object({
 
 export const workspacePatchSchema = z.object({
   name: z.string().trim().min(1).max(80).optional(),
+  description: z.string().trim().max(2000).optional(),
   icon: z.string().max(32).nullable().optional(),
 });
 

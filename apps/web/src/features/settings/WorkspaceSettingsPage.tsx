@@ -29,6 +29,7 @@ export function WorkspaceSettingsPage() {
 
   const [tab, setTab] = useState<Tab>((search.tab as Tab) || 'general');
   const [name, setName] = useState(workspace?.name ?? '');
+  const [description, setDescription] = useState(workspace?.description ?? '');
   const [inviteOpen, setInviteOpen] = useState(false);
   const [inviteEmail, setInviteEmail] = useState('');
   const [inviteRole, setInviteRole] = useState<Role>('member');
@@ -41,7 +42,8 @@ export function WorkspaceSettingsPage() {
 
   useEffect(() => {
     setName(workspace?.name ?? '');
-  }, [workspace?.name]);
+    setDescription(workspace?.description ?? '');
+  }, [workspace?.name, workspace?.description]);
 
   if (!workspace) {
     return (
@@ -63,10 +65,13 @@ export function WorkspaceSettingsPage() {
     { id: 'danger', label: t('settings.danger') },
   ];
 
-  async function saveName() {
+  async function saveWorkspace() {
     if (!name.trim()) return;
     try {
-      await patch(`/v1/workspaces/${workspace!.id}`, { name: name.trim() });
+      await patch(`/v1/workspaces/${workspace!.id}`, {
+        name: name.trim(),
+        description: description.trim(),
+      });
       await queryClient.invalidateQueries({ queryKey: ['workspaces'] });
       toast.push(t('common.saved'), { kind: 'success' });
     } catch {
@@ -218,24 +223,39 @@ export function WorkspaceSettingsPage() {
               <label className="label" htmlFor="ws-settings-name">
                 {t('settings.workspaceName')}
               </label>
-              <div className="row">
-                <input
-                  id="ws-settings-name"
-                  className="input"
-                  value={name}
-                  onChange={(event) => setName(event.target.value)}
-                  onKeyDown={(event) => {
-                    if (event.key === 'Enter') void saveName();
-                  }}
+              <input
+                id="ws-settings-name"
+                className="input"
+                value={name}
+                onChange={(event) => setName(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter') void saveWorkspace();
+                }}
+              />
+              <div style={{ marginTop: 12 }}>
+                <label className="label" htmlFor="ws-settings-description">
+                  {t('settings.workspaceDescription')}
+                </label>
+                <textarea
+                  id="ws-settings-description"
+                  className="textarea"
+                  rows={3}
+                  value={description}
+                  onChange={(event) => setDescription(event.target.value)}
+                  placeholder={t('settings.workspaceDescriptionPlaceholder')}
                 />
-                <Button
-                  variant="primary"
-                  onClick={() => void saveName()}
-                  disabled={!name.trim() || name === workspace!.name}
-                >
-                  {t('common.save')}
-                </Button>
               </div>
+              <Button
+                variant="primary"
+                style={{ marginTop: 12 }}
+                onClick={() => void saveWorkspace()}
+                disabled={
+                  !name.trim() ||
+                  (name === workspace!.name && description === (workspace!.description ?? ''))
+                }
+              >
+                {t('common.save')}
+              </Button>
               <hr className="divider" />
               <div className="spread small" style={{ marginTop: 8 }}>
                 <span className="muted">{t('settings.workspaceOwner')}</span>
@@ -256,6 +276,53 @@ export function WorkspaceSettingsPage() {
                     : t('settings.emailNotVerified')}
                 </span>
               </div>
+              <hr className="divider" />
+              <div className="spread" style={{ marginBottom: 8 }}>
+                <span className="label">{t('settings.accessTitle')}</span>
+                {isManager ? (
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    icon="plus"
+                    onClick={() => setInviteOpen(true)}
+                  >
+                    {t('settings.grantAccess')}
+                  </Button>
+                ) : null}
+              </div>
+              <p className="caption subtle">{t('settings.accessHint')}</p>
+              <div>
+                {(members.data?.data ?? []).slice(0, 6).map((member) => (
+                  <div className="row" key={member.user_id} style={{ gap: 8, padding: '4px 0' }}>
+                    <Avatar name={member.display_name} src={member.avatar_url} size="sm" />
+                    <span className="small grow truncate">
+                      {member.display_name}
+                      {member.user_id === user?.id ? ` (${t('common.you')})` : ''}
+                    </span>
+                    <span className="badge">{t(`settings.${member.role}`)}</span>
+                  </div>
+                ))}
+              </div>
+              {(invitations.data?.data ?? []).length > 0 ? (
+                <p className="caption subtle">
+                  {t('settings.pendingInvites', { count: invitations.data?.data.length ?? 0 })}
+                </p>
+              ) : null}
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => {
+                  setTab('members');
+                  void navigate({
+                    to: '/app/$wsSlug/settings',
+                    params: { wsSlug },
+                    search: { tab: 'members' },
+                    replace: true,
+                  });
+                }}
+              >
+                {t('settings.manageAccess')}
+              </Button>
             </div>
           ) : null}
 
@@ -274,6 +341,7 @@ export function WorkspaceSettingsPage() {
                   </Button>
                 ) : null}
               </div>
+              <p className="caption subtle">{t('settings.membersHint')}</p>
               {(members.data?.data ?? []).map((member) => (
                 <div className="member-row" key={member.user_id}>
                   <Avatar name={member.display_name} src={member.avatar_url} />

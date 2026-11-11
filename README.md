@@ -14,6 +14,7 @@ Kanban keeps them in order for you.
 ## What you can do
 
 - Create workspaces for different projects and invite your team by link.
+- Describe each workspace, edit its settings and manage who has access.
 - Build boards with columns like *To do*, *In progress* and *Done*.
 - Add cards with a title, description, deadline, priority, labels and checklists.
 - Drag cards between columns; everything is saved automatically.

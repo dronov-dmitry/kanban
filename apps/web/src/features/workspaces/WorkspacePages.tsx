@@ -203,6 +203,11 @@ export function WorkspaceHomePage() {
             {t('workspace.boards')}: {list.length} · {t('workspace.members')}:{' '}
             {members.data?.data.length ?? workspace.member_count ?? '—'}
           </p>
+          {workspace.description ? (
+            <p className="muted small" style={{ marginTop: 4 }}>
+              {workspace.description}
+            </p>
+          ) : null}
         </div>
         <div className="row">
           <div className="avatar-stack hide-mobile">

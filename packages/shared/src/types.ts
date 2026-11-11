@@ -38,6 +38,7 @@ export interface UserSettings {
 export interface Workspace {
   id: string;
   name: string;
+  description: string;
   slug: string;
   icon: string | null;
   created_by: string;
