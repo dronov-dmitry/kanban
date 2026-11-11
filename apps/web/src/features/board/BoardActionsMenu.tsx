@@ -683,11 +683,11 @@ function BoardSettingsDialog({
                       </div>
                     ) : null}
                   </div>
-                  {canManageRoles && direct && !isOwner ? (
+                  {canManageRoles && !isOwner ? (
                     <select
                       className="select"
                       style={{ width: 140, minHeight: 30 }}
-                      value={boardRow?.role ?? 'viewer'}
+                      value={boardRoleValue(member.role)}
                       disabled={memberBusy === member.user_id}
                       onChange={(event) =>
                         void changeMemberRole(
@@ -840,6 +840,12 @@ const BOARD_ROLE_LABEL_KEYS: Record<string, string> = {
 
 function boardRoleKey(role: string): string {
   return BOARD_ROLE_LABEL_KEYS[role] ?? 'settings.member';
+}
+
+function boardRoleValue(role: string): 'viewer' | 'manager' | 'worker' {
+  if (role === 'viewer') return 'viewer';
+  if (role === 'worker') return 'worker';
+  return 'manager';
 }
 
 function BoardLabelsDialog({
