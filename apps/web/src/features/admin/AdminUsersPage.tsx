@@ -2,8 +2,8 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Avatar, Button, EmptyState, Icon, Modal, useToast } from '../../components/ui';
-import { del, get, post } from '../../lib/api';
-import type { AdminBanRow, AdminUserRow } from '../../lib/api-types';
+import { del, get, patch, post } from '../../lib/api';
+import type { AdminBanRow, AdminSubscriptionRow, AdminUserRow } from '../../lib/api-types';
 import { useAuthStore } from '../../lib/auth-store';
 import { formatDateTime } from '../../lib/utils';
 
@@ -60,6 +60,31 @@ export function AdminUsersPage() {
         queryClient.invalidateQueries({ queryKey: ['admin-bans'] }),
         queryClient.invalidateQueries({ queryKey: ['admin-users'] }),
       ]);
+    } catch (error: any) {
+      toast.push(error?.problem?.detail ?? t('errors.generic'), { kind: 'danger' });
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function setPro(userRow: AdminUserRow, plan: 'free' | 'pro') {
+    if (busy) return;
+    setBusy(true);
+    try {
+      const response = await patch<{ subscription: AdminSubscriptionRow | null }>(
+        `/v1/admin/users/${userRow.id}/subscription`,
+        { plan },
+      );
+      toast.push(t(plan === 'pro' ? 'admin.proGranted' : 'admin.proRevoked'), {
+        kind: 'success',
+      });
+      await queryClient.invalidateQueries({ queryKey: ['admin-users'] });
+      if (userRow.id === auth.user?.id) {
+        auth.updateUser({
+          plan,
+          pro_until: response.subscription?.current_period_end ?? null,
+        });
+      }
     } catch (error: any) {
       toast.push(error?.problem?.detail ?? t('errors.generic'), { kind: 'danger' });
     } finally {
@@ -137,6 +162,11 @@ export function AdminUsersPage() {
                       {userRow.is_staff ? (
                         <span className="badge info">{t('admin.staff')}</span>
                       ) : null}
+                      {userRow.is_pro ? (
+                        <span className="badge primary">
+                          <Icon name="star" size={12} /> {t('admin.pro')}
+                        </span>
+                      ) : null}
                       {ban ? <span className="badge danger">{t('admin.banned')}</span> : null}
                     </div>
                     <div className="caption subtle truncate">{userRow.email}</div>
@@ -144,37 +174,59 @@ export function AdminUsersPage() {
                       {t('admin.joined')}: {formatDateTime(userRow.created_at, i18n.language)} ·{' '}
                       {t('admin.workspaces')}: {userRow.workspace_count}
                     </div>
+                    {userRow.is_pro && userRow.current_period_end ? (
+                      <div className="caption subtle">
+                        {t('admin.proUntil')}:{' '}
+                        {formatDateTime(userRow.current_period_end, i18n.language)}
+                      </div>
+                    ) : null}
                     {ban?.reason ? (
                       <div className="caption muted">
                         {t('admin.reason')}: {ban.reason}
                       </div>
                     ) : null}
                   </div>
-                  {ban ? (
-                    <Button size="sm" icon="check" disabled={busy} onClick={() => void unban(ban)}>
-                      {t('admin.unban')}
-                    </Button>
-                  ) : (
+                  <div className="row" style={{ gap: 6 }}>
                     <Button
                       size="sm"
-                      variant="danger"
-                      icon="lock"
-                      disabled={busy || isSelf || userRow.is_staff === 1}
-                      title={
-                        isSelf
-                          ? t('admin.selfBan')
-                          : userRow.is_staff === 1
-                            ? t('admin.staffBan')
-                            : undefined
-                      }
-                      onClick={() => {
-                        setReason('');
-                        setTarget(userRow);
-                      }}
+                      variant={userRow.is_pro ? 'ghost' : 'soft'}
+                      icon="star"
+                      disabled={busy}
+                      onClick={() => void setPro(userRow, userRow.is_pro ? 'free' : 'pro')}
                     >
-                      {t('admin.ban')}
+                      {userRow.is_pro ? t('admin.revokePro') : t('admin.grantPro')}
                     </Button>
-                  )}
+                    {ban ? (
+                      <Button
+                        size="sm"
+                        icon="check"
+                        disabled={busy}
+                        onClick={() => void unban(ban)}
+                      >
+                        {t('admin.unban')}
+                      </Button>
+                    ) : (
+                      <Button
+                        size="sm"
+                        variant="danger"
+                        icon="lock"
+                        disabled={busy || isSelf || userRow.is_staff === 1}
+                        title={
+                          isSelf
+                            ? t('admin.selfBan')
+                            : userRow.is_staff === 1
+                              ? t('admin.staffBan')
+                              : undefined
+                        }
+                        onClick={() => {
+                          setReason('');
+                          setTarget(userRow);
+                        }}
+                      >
+                        {t('admin.ban')}
+                      </Button>
+                    )}
+                  </div>
                 </div>
               );
             })

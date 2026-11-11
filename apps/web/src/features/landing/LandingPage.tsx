@@ -300,9 +300,13 @@ export function LandingPage() {
               <li>{t('landing.proFeature3')}</li>
               <li>{t('landing.proFeature4')}</li>
             </ul>
-            <Link to="/login" className="btn primary" style={{ marginTop: 16, width: '100%' }}>
+            <a
+              href={`${import.meta.env.BASE_URL}login?redirect=${encodeURIComponent('/app/billing')}`}
+              className="btn primary"
+              style={{ marginTop: 16, width: '100%' }}
+            >
               {t('landing.choosePro')}
-            </Link>
+            </a>
           </div>
         </div>
       </section>

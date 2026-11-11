@@ -223,8 +223,21 @@ export interface AdminUserRow {
   display_name: string;
   avatar_url: string | null;
   is_staff: number;
+  plan: 'free' | 'pro';
+  plan_status: 'active' | 'expired';
+  current_period_end: number | null;
+  is_pro: number;
   created_at: number;
   workspace_count: number;
+}
+
+export interface AdminSubscriptionRow {
+  user_id: string;
+  plan: 'free' | 'pro';
+  status: 'active' | 'expired';
+  current_period_end: number | null;
+  created_at: number;
+  updated_at: number;
 }
 
 export interface AdminBanRow {
@@ -236,4 +249,35 @@ export interface AdminBanRow {
   banned_by_name: string | null;
   expires_at: number | null;
   created_at: number;
+}
+
+export interface BillingPlan {
+  code: 'pro';
+  amount: string;
+  currency: string;
+  period_days: number;
+}
+
+export interface BillingSubscription {
+  plan: 'free' | 'pro';
+  status: 'active' | 'free';
+  current_period_end: number | null;
+}
+
+export interface BillingPaymentRow {
+  id: string;
+  plan: string;
+  amount: string;
+  currency: string;
+  period_days: number;
+  status: 'pending' | 'paid' | 'cancelled' | 'failed' | 'refunded';
+  created_at: number;
+  paid_at: number | null;
+}
+
+export interface BillingInfo {
+  configured: boolean;
+  plan: BillingPlan;
+  subscription: BillingSubscription;
+  payments: BillingPaymentRow[];
 }

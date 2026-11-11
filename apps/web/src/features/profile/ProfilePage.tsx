@@ -168,7 +168,14 @@ export function ProfilePage() {
         <div className="row">
           <Avatar name={auth.user.display_name} src={auth.user.avatar_url} size="lg" />
           <div>
-            <h1 style={{ fontSize: 24 }}>{auth.user.display_name}</h1>
+            <div className="row" style={{ gap: 8 }}>
+              <h1 style={{ fontSize: 24 }}>{auth.user.display_name}</h1>
+              {auth.user.plan === 'pro' ? (
+                <span className="badge primary">
+                  <Icon name="star" size={12} /> PRO
+                </span>
+              ) : null}
+            </div>
             <p className="muted small" style={{ marginTop: 2 }}>
               {auth.user.email}
             </p>

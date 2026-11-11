@@ -51,6 +51,10 @@ const AdminUsersPage = lazyRouteComponent(
   () => import('../features/admin/AdminUsersPage'),
   'AdminUsersPage',
 );
+const BillingPage = lazyRouteComponent(
+  () => import('../features/billing/BillingPage'),
+  'BillingPage',
+);
 const InvitePage = lazyRouteComponent(() => import('../features/invite/InvitePage'), 'InvitePage');
 const PublicBoardPage = lazyRouteComponent(
   () => import('../features/public/PublicBoardPage'),
@@ -224,6 +228,12 @@ const adminRoute = createRoute({
   component: AdminUsersPage,
 });
 
+const billingRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: 'billing',
+  component: BillingPage,
+});
+
 const routeTree = rootRoute.addChildren([
   indexRoute,
   aboutRoute,
@@ -240,6 +250,7 @@ const routeTree = rootRoute.addChildren([
     appIndexRoute,
     profileRoute,
     adminRoute,
+    billingRoute,
     workspaceRoute,
     workspaceMyRoute,
     workspaceSearchRoute,

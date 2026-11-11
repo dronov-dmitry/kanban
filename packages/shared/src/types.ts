@@ -1,6 +1,7 @@
 import type { Priority } from './filters';
 
 export type Role = 'owner' | 'admin' | 'member' | 'viewer';
+export type Plan = 'free' | 'pro';
 export type BoardVisibility = 'private' | 'public';
 export type BoardMemberRole = 'viewer' | 'member';
 export type BoardTemplate = 'empty' | 'development' | 'content' | 'personal' | 'hiring' | 'sprint';
@@ -16,6 +17,9 @@ export interface User {
   timezone: string;
   email_verified_at: number | null;
   is_staff: number;
+  plan: Plan;
+  /** End of the paid period; `null` means the plan does not expire. */
+  pro_until: number | null;
   created_at: number;
 }
 

@@ -81,7 +81,8 @@
     "profile": "Profile",
     "dashboard": "Overview",
     "admin": "Admin",
-    "about": "About"
+    "about": "About",
+    "billing": "Billing"
   },
   "auth": {
     "loginTitle": "Log in to Kanban",
@@ -159,7 +160,7 @@
     "freePrice": "$0",
     "freePeriod": "forever",
     "proPrice": "$6",
-    "proPeriod": "per member / month",
+    "proPeriod": "per 30 days",
     "freeFeature1": "Unlimited boards",
     "freeFeature2": "Up to 10 members",
     "freeFeature3": "Offline mode and PWA",
@@ -332,7 +333,14 @@
     "wipWarning": "Column is over its limit",
     "hideEmpty": "Hide empty columns",
     "deleteConfirm": "Move the board to trash? It can be restored within 30 days.",
-    "localChanges": "Changes are saved locally and will sync automatically."
+    "localChanges": "Changes are saved locally and will sync automatically.",
+    "manageLabels": "Manage labels",
+    "labelsHint": "Labels are used in the board filters. Rename them or add new ones.",
+    "labelName": "Label name",
+    "labelColor": "Label color",
+    "addLabel": "Add label",
+    "noLabels": "No labels yet.",
+    "labelDeleteConfirm": "Delete the label “{{name}}”? It will be removed from all cards."
   },
   "card": {
     "title": "Title",
@@ -483,6 +491,35 @@
     "identities": "Sign-in methods",
     "notLinked": "Not linked"
   },
+  "billing": {
+    "title": "Plan and billing",
+    "subtitle": "The Pro subscription is paid in crypto through Paymento.",
+    "currentPlan": "Current plan",
+    "planFree": "Free",
+    "planPro": "Pro",
+    "freeHint": "The basic plan, free of charge.",
+    "validUntil": "Pro is active until {{date}}",
+    "expired": "Pro expired on {{date}}",
+    "proTitle": "Pro for {{days}} days",
+    "proHint": "The subscription activates after the payment is confirmed on-chain and extends for the selected period.",
+    "proFeature1": "Everything from Free",
+    "proFeature2": "Priority support",
+    "proFeature3": "Higher limits and audit",
+    "pay": "Pay with Paymento",
+    "payHint": "Payment is accepted in BTC, ETH, USDT and other cryptocurrencies. Pro activates automatically once the network confirms the transaction.",
+    "pendingHint": "The payment was created and is awaiting confirmation. The status refreshes automatically.",
+    "notConfigured": "Billing is not configured yet: an administrator needs to add the Paymento keys.",
+    "history": "Payment history",
+    "noPayments": "No payments yet.",
+    "paidAt": "paid",
+    "status": {
+      "pending": "Awaiting payment",
+      "paid": "Paid",
+      "cancelled": "Cancelled",
+      "failed": "Failed",
+      "refunded": "Refunded"
+    }
+  },
   "errors": {
     "generic": "Something went wrong. Please try again.",
     "network": "No connection. Changes are saved locally.",
@@ -583,6 +620,12 @@
     "selfBan": "You cannot block your own account",
     "staffBan": "Administrators cannot be blocked",
     "banSuccess": "User blocked",
-    "unbanSuccess": "Block removed"
+    "unbanSuccess": "Block removed",
+    "pro": "PRO",
+    "proUntil": "PRO until",
+    "grantPro": "Grant PRO",
+    "revokePro": "Remove PRO",
+    "proGranted": "PRO plan granted",
+    "proRevoked": "PRO plan removed"
   }
 }

@@ -66,6 +66,7 @@ import { useBoardRealtime } from '../../lib/realtime';
 import { cn, formatDue, LIST_COLORS, PRIORITY_COLORS } from '../../lib/utils';
 import { CardModal } from './CardModal';
 import { CardTile } from './CardTile';
+import { LabelManager } from './LabelManager';
 
 interface BoardSearch {
   card?: string;
@@ -114,6 +115,7 @@ export function BoardPage() {
   const [deleteList, setDeleteList] = useState<BoardList | null>(null);
   const [deleteBoardOpen, setDeleteBoardOpen] = useState(false);
   const [boardSettingsOpen, setBoardSettingsOpen] = useState(search.settings === '1');
+  const [labelsManagerOpen, setLabelsManagerOpen] = useState(false);
   const [settingsName, setSettingsName] = useState('');
   const [settingsDescription, setSettingsDescription] = useState('');
   const [settingsCover, setSettingsCover] = useState(LIST_COLORS[0]!);
@@ -974,6 +976,11 @@ export function BoardPage() {
             >
               {t('board.boardSettings')}
             </MenuItem>
+            {canWrite ? (
+              <MenuItem icon="tag" onClick={() => setLabelsManagerOpen(true)}>
+                {t('board.manageLabels')}
+              </MenuItem>
+            ) : null}
             <MenuItem icon="duplicate" onClick={() => void duplicateBoard()}>
               {t('common.duplicate')}
             </MenuItem>
@@ -1042,6 +1049,8 @@ export function BoardPage() {
           }
           onApplyView={(value) => setFilters(parseFilters(value))}
           onSaveView={() => setSaveViewOpen(true)}
+          canWrite={canWrite}
+          onEditLabels={() => setLabelsManagerOpen(true)}
         />
       ) : null}
 
@@ -1580,6 +1589,28 @@ export function BoardPage() {
       </Modal>
 
       <Modal
+        open={labelsManagerOpen}
+        onClose={() => setLabelsManagerOpen(false)}
+        title={t('board.manageLabels')}
+        footer={
+          <Button variant="ghost" onClick={() => setLabelsManagerOpen(false)}>
+            {t('common.close')}
+          </Button>
+        }
+      >
+        <LabelManager
+          boardId={boardId}
+          labels={labels}
+          onLabelDeleted={(labelId) =>
+            setFilters((current) => ({
+              ...current,
+              labels: current.labels.filter((value) => value !== labelId),
+            }))
+          }
+        />
+      </Modal>
+
+      <Modal
         open={shareOpen}
         onClose={() => {
           setShareOpen(false);
@@ -1971,6 +2002,8 @@ function FilterPanel({
   onReset,
   onApplyView,
   onSaveView,
+  canWrite,
+  onEditLabels,
 }: {
   filters: FilterState;
   setFilters: (filters: FilterState) => void;
@@ -1980,6 +2013,8 @@ function FilterPanel({
   onReset: () => void;
   onApplyView: (value: string) => void;
   onSaveView: () => void;
+  canWrite: boolean;
+  onEditLabels: () => void;
 }) {
   const { t } = useTranslation();
   const toggle = (group: 'assignees' | 'labels' | 'priorities', value: string) => {
@@ -2105,6 +2140,11 @@ function FilterPanel({
       <Button size="sm" variant="ghost" onClick={onReset}>
         {t('common.reset')}
       </Button>
+      {canWrite ? (
+        <Button size="sm" variant="ghost" icon="tag" onClick={onEditLabels}>
+          {t('board.manageLabels')}
+        </Button>
+      ) : null}
     </div>
   );
 }

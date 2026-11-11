@@ -111,6 +111,12 @@ export const banCreateSchema = z.object({
   expiresAt: z.number().int().positive().nullable().optional(),
 });
 
+export const adminSubscriptionSchema = z.object({
+  plan: z.enum(['free', 'pro']),
+  /** Paid period in days. Omit for a PRO plan without an expiry date. */
+  periodDays: z.number().int().min(1).max(3650).optional(),
+});
+
 export const serviceInviteCreateSchema = z.object({
   email: emailSchema.optional(),
   note: z.string().trim().max(500).optional(),

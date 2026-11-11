@@ -56,7 +56,8 @@ type IconName =
   | 'flag'
   | 'tag'
   | 'restore'
-  | 'duplicate';
+  | 'duplicate'
+  | 'credit-card';
 
 const ICON_PATHS: Record<IconName, ReactNode> = {
   plus: <path d="M12 5v14M5 12h14" />,
@@ -132,6 +133,12 @@ const ICON_PATHS: Record<IconName, ReactNode> = {
     </>
   ),
   star: <path d="m12 3 2.8 5.7 6.2.9-4.5 4.4 1.1 6.2L12 17.3 6.4 20.2l1.1-6.2L3 9.6l6.2-.9Z" />,
+  'credit-card': (
+    <>
+      <rect x="2" y="5" width="20" height="14" rx="2" />
+      <path d="M2 10h20" />
+    </>
+  ),
   clock: (
     <>
       <circle cx="12" cy="12" r="9" />

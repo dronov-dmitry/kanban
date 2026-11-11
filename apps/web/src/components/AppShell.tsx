@@ -395,6 +395,15 @@ export function AppShell() {
             </>
           ) : null}
 
+          <nav className="nav" aria-label={t('nav.billing')}>
+            <Link to="/app/billing" className={cn('nav-item', path === '/app/billing' && 'active')}>
+              <span className="icon">
+                <Icon name="credit-card" size={17} />
+              </span>
+              <span>{t('nav.billing')}</span>
+            </Link>
+          </nav>
+
           {isStaff ? (
             <nav className="nav" aria-label={t('nav.admin')}>
               <Link to="/app/admin" className={cn('nav-item', path === '/app/admin' && 'active')}>
@@ -434,6 +443,9 @@ export function AppShell() {
             >
               <MenuItem icon="user" onClick={() => void navigate({ to: '/app/me' })}>
                 {t('nav.profile')}
+              </MenuItem>
+              <MenuItem icon="credit-card" onClick={() => void navigate({ to: '/app/billing' })}>
+                {t('nav.billing')}
               </MenuItem>
               <MenuItem
                 icon={auth.settings?.theme === 'dark' ? 'sun' : 'moon'}
@@ -580,6 +592,9 @@ export function AppShell() {
                 <div className="menu-separator" />
                 <MenuItem icon="user" onClick={() => void navigate({ to: '/app/me' })}>
                   {t('nav.profile')}
+                </MenuItem>
+                <MenuItem icon="credit-card" onClick={() => void navigate({ to: '/app/billing' })}>
+                  {t('nav.billing')}
                 </MenuItem>
                 <MenuItem icon="key" onClick={() => void navigate({ to: '/app/me' })}>
                   {t('settings.changePassword')}
