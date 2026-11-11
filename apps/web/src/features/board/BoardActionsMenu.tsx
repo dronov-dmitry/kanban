@@ -630,6 +630,13 @@ function BoardSettingsDialog({
             {members.map((member) => {
               const boardRow = boardMemberRows.find((row) => row.user_id === member.user_id);
               const isOwner = board.created_by === member.user_id;
+              const accessVia = member.access_via ?? (boardRow ? 'direct' : 'workspace');
+              const direct = accessVia === 'direct' && Boolean(boardRow);
+              const sourceWorkspace = member.source_workspace_slug
+                ? (workspacesQuery.data?.data ?? []).find(
+                    (workspace) => workspace.slug === member.source_workspace_slug,
+                  )
+                : null;
               return (
                 <div className="member-row" key={member.user_id}>
                   <Avatar name={member.display_name} src={member.avatar_url} size="sm" />
@@ -641,12 +648,22 @@ function BoardSettingsDialog({
                       ) : null}
                     </div>
                     <div className="caption subtle truncate">{member.email}</div>
+                    {member.source_workspace_name ? (
+                      <div className="caption subtle truncate">
+                        {t(
+                          accessVia === 'linked'
+                            ? 'board.accessViaLinked'
+                            : 'board.accessViaWorkspace',
+                          { workspace: member.source_workspace_name },
+                        )}
+                      </div>
+                    ) : null}
                   </div>
-                  {canManageRoles && boardRow && !isOwner ? (
+                  {canManageRoles && direct && !isOwner ? (
                     <select
                       className="select"
                       style={{ width: 140, minHeight: 30 }}
-                      value={boardRow.role}
+                      value={boardRow?.role ?? 'viewer'}
                       disabled={memberBusy === member.user_id}
                       onChange={(event) =>
                         void changeMemberRole(
@@ -663,7 +680,7 @@ function BoardSettingsDialog({
                   ) : (
                     <span className="badge">{t(boardRoleKey(member.role))}</span>
                   )}
-                  {canManageRoles && boardRow && !isOwner ? (
+                  {canManageRoles && direct && !isOwner ? (
                     <Button
                       size="sm"
                       variant="ghost"
@@ -671,6 +688,22 @@ function BoardSettingsDialog({
                       aria-label={t('board.removeMember')}
                       disabled={memberBusy === member.user_id}
                       onClick={() => setRemoveCandidate(member)}
+                    />
+                  ) : null}
+                  {!direct && sourceWorkspace ? (
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      icon="users"
+                      aria-label={t('board.manageWorkspaceAccess')}
+                      title={t('board.manageWorkspaceAccess')}
+                      onClick={() =>
+                        void navigate({
+                          to: '/app/$wsSlug/settings',
+                          params: { wsSlug: sourceWorkspace.slug },
+                          search: { tab: 'members' },
+                        })
+                      }
                     />
                   ) : null}
                 </div>

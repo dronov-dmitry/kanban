@@ -56,6 +56,10 @@ export interface Member {
   avatar_url: string | null;
   role: Role;
   joined_at: number;
+  /** Board listings: where the access comes from. */
+  access_via?: 'workspace' | 'linked' | 'direct';
+  source_workspace_slug?: string;
+  source_workspace_name?: string;
 }
 
 export interface Invitation {

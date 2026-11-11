@@ -172,7 +172,8 @@ export interface SearchResult {
   list_id: string | null;
   list_name: string;
   workspace_id: string;
-  source: 'card' | 'comment' | 'board';
+  workspace_slug?: string;
+  source: 'card' | 'comment' | 'board' | 'workspace';
   comment_id?: string;
 }
 

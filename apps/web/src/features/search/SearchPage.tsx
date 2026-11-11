@@ -33,9 +33,17 @@ export function SearchPage() {
   });
 
   function open(result: SearchResult) {
+    if (result.source === 'workspace') {
+      void navigate({
+        to: '/app/$wsSlug',
+        params: { wsSlug: result.workspace_slug ?? wsSlug },
+        search: {},
+      });
+      return;
+    }
     void navigate({
       to: '/app/$wsSlug/boards/$boardId',
-      params: { wsSlug, boardId: result.board_id },
+      params: { wsSlug, boardId: result.board_id! },
       search: result.source === 'board' || !result.card_id ? {} : { card: result.card_id },
     });
   }
@@ -111,11 +119,13 @@ export function SearchPage() {
               <span className="avatar sm" aria-hidden="true">
                 <Icon
                   name={
-                    result.source === 'board'
+                    result.source === 'workspace'
                       ? 'board'
-                      : result.source === 'comment'
-                        ? 'comment'
-                        : 'edit'
+                      : result.source === 'board'
+                        ? 'board'
+                        : result.source === 'comment'
+                          ? 'comment'
+                          : 'edit'
                   }
                   size={13}
                 />
@@ -124,11 +134,13 @@ export function SearchPage() {
                 <span className="spread">
                   <span className="strong small truncate">{result.title}</span>
                   <span className="badge">
-                    {result.source === 'board'
-                      ? t('workspace.boards')
-                      : result.source === 'comment'
-                        ? t('card.comments')
-                        : t('card.title')}
+                    {result.source === 'workspace'
+                      ? t('workspace.workspace')
+                      : result.source === 'board'
+                        ? t('workspace.boards')
+                        : result.source === 'comment'
+                          ? t('card.comments')
+                          : t('card.title')}
                   </span>
                 </span>
                 <span
@@ -137,9 +149,11 @@ export function SearchPage() {
                   dangerouslySetInnerHTML={{ __html: sanitizeSnippet(result.snippet) }}
                 />
                 <span className="caption subtle">
-                  {result.source === 'board'
-                    ? result.board_name
-                    : `${result.board_name} · ${result.list_name}`}
+                  {result.source === 'workspace'
+                    ? result.workspace_slug
+                    : result.source === 'board'
+                      ? result.board_name
+                      : `${result.board_name} · ${result.list_name}`}
                 </span>
               </span>
             </button>
