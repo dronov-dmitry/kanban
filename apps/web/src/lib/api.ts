@@ -80,6 +80,21 @@ function authHeaders(): Record<string, string> {
   return token ? { Authorization: `Bearer ${token}` } : {};
 }
 
+/** Access tokens are short-lived. Decode the JWT to refresh before an avoidable 401. */
+function tokenNeedsRefresh(token: string | null): boolean {
+  if (!token) return false;
+  try {
+    const payload = token.split('.')[1];
+    if (!payload) return false;
+    const base64 = payload.replace(/-/g, '+').replace(/_/g, '/');
+    const padded = base64.padEnd(base64.length + ((4 - (base64.length % 4)) % 4), '=');
+    const json = JSON.parse(atob(padded)) as { exp?: unknown };
+    return typeof json.exp === 'number' && json.exp * 1000 <= Date.now() + 30_000;
+  } catch {
+    return false;
+  }
+}
+
 async function parseResponse<T>(response: Response): Promise<T> {
   if (response.status === 204) return undefined as T;
   const text = await response.text();
@@ -96,6 +111,16 @@ export async function apiRequest<T>(path: string, options: RequestOptions = {}):
   const isMutation = method !== 'GET' && method !== 'HEAD';
   const mutationId = isMutation ? ulid() : null;
   const isForm = options.body instanceof FormData;
+  const session = useAuthStore.getState();
+  if (
+    options.retry !== false &&
+    session.refreshToken &&
+    (!session.accessToken || tokenNeedsRefresh(session.accessToken))
+  ) {
+    // Refresh once before the request so the browser console stays free of
+    // expected 401s when an old access token is restored from localStorage.
+    await refreshSession();
+  }
   const headers: Record<string, string> = {
     Accept: 'application/json',
     ...authHeaders(),

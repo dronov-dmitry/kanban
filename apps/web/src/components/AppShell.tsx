@@ -35,8 +35,8 @@ export function AppShell() {
     workspaces.data?.data.find((workspace) => workspace.slug === params.wsSlug) ?? null;
   const boards = useBoards(current?.id);
   const sharedBoards = useSharedBoards(Boolean(auth.user));
-  const notifications = useNotifications(Boolean(auth.user));
-  const unread = useUnreadCount(Boolean(auth.user));
+  const notifications = useNotifications(Boolean(auth.user && auth.refreshToken));
+  const unread = useUnreadCount(Boolean(auth.user && auth.refreshToken));
 
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
@@ -92,6 +92,8 @@ export function AppShell() {
 
   useEffect(() => {
     const onInstall = (event: Event) => {
+      // We defer the browser prompt to show our own install banner. Chrome
+      // prints an informational "Banner not shown" message for this pattern.
       event.preventDefault();
       setInstallPrompt(event);
     };

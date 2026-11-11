@@ -55,6 +55,7 @@ void i18n
     fallbackLng: 'ru',
     interpolation: { escapeValue: false },
     returnNull: false,
+    showSupportNotice: false,
   })
   .then(() => applyDocumentLocale(initial));
 
