@@ -77,6 +77,10 @@ export const boardWorkspaceAcceptSchema = z.object({
   workspaceId: z.string().trim().min(1).max(64),
 });
 
+export const boardMoveSchema = z.object({
+  workspaceId: z.string().trim().min(1).max(64),
+});
+
 export const cardDuplicateSchema = z.object({
   locale: localeSchema.optional(),
 });

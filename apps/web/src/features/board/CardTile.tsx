@@ -1,8 +1,8 @@
 import type { Card, CardLabel, Member } from '@kanban/shared';
 import { dueUrgency } from '@kanban/shared';
 import { useTranslation } from 'react-i18next';
-import { Avatar, Icon, Progress } from '../../components/ui';
-import { cn, formatDue, PRIORITY_COLORS } from '../../lib/utils';
+import { Avatar, Icon, Menu, MenuItem, Progress } from '../../components/ui';
+import { COLUMN_COLORS, cn, formatDue, PRIORITY_COLORS } from '../../lib/utils';
 
 export function CardTile({
   card,
@@ -14,7 +14,10 @@ export function CardTile({
   attachmentCount,
   selected,
   dragging,
+  canWrite,
   onOpen,
+  onArchive,
+  onColor,
 }: {
   card: Card;
   labels: CardLabel[];
@@ -25,13 +28,18 @@ export function CardTile({
   attachmentCount: number;
   selected?: boolean;
   dragging?: boolean;
+  canWrite?: boolean;
   onOpen?: () => void;
+  onArchive?: () => void;
+  onColor?: (color: string | null) => void;
 }) {
   const { t, i18n } = useTranslation();
   const urgency = dueUrgency(card.due_date, card.due_done === 1);
   const assigneeMembers = assignees
     .map((id) => members.find((member) => member.user_id === id))
     .filter(Boolean) as Member[];
+  const coverColor =
+    card.cover_ref && /^#[0-9a-f]{3,8}$/i.test(card.cover_ref) ? card.cover_ref : null;
 
   return (
     <div
@@ -45,6 +53,59 @@ export function CardTile({
       aria-label={card.title}
       data-card-id={card.id}
     >
+      {coverColor ? (
+        <span className="card-color-bar" style={{ background: coverColor }} aria-hidden="true" />
+      ) : null}
+      {canWrite && (onArchive || onColor) ? (
+        <div
+          className="card-tile-menu"
+          onClick={(event) => {
+            event.preventDefault();
+            event.stopPropagation();
+          }}
+          onKeyDown={(event) => event.stopPropagation()}
+        >
+          <Menu
+            trigger={(props) => (
+              <button
+                type="button"
+                className="card-tile-menu-btn"
+                aria-label={t('common.actions')}
+                {...props}
+              >
+                <Icon name="more" size={14} />
+              </button>
+            )}
+          >
+            {onArchive ? (
+              <MenuItem icon="archive" onClick={onArchive}>
+                {t('card.archive')}
+              </MenuItem>
+            ) : null}
+            {onColor ? (
+              <>
+                <div className="menu-separator" />
+                <span className="caption subtle card-color-label">{t('card.color')}</span>
+                <div className="card-color-grid">
+                  {COLUMN_COLORS.map((color) => (
+                    <button
+                      key={color}
+                      type="button"
+                      className="card-color-swatch"
+                      style={{ background: color }}
+                      aria-label={color}
+                      onClick={() => onColor(color)}
+                    />
+                  ))}
+                </div>
+                <MenuItem icon="close" onClick={() => onColor(null)}>
+                  {t('card.removeColor')}
+                </MenuItem>
+              </>
+            ) : null}
+          </Menu>
+        </div>
+      ) : null}
       {card.cover_ref && card.cover_ref.startsWith('http') ? (
         <div className="card-cover">
           <img src={card.cover_ref} alt="" />

@@ -6,7 +6,7 @@ import { useTranslation } from 'react-i18next';
 import { Avatar, Button, Menu, MenuItem, Modal, useToast } from '../../components/ui';
 import { ApiError, del, downloadWithAuth, patch, post } from '../../lib/api';
 import { useAuthStore } from '../../lib/auth-store';
-import { useBoard } from '../../lib/queries';
+import { useBoard, useWorkspaces } from '../../lib/queries';
 import { LIST_COLORS } from '../../lib/utils';
 import { LabelManager } from './LabelManager';
 
@@ -289,8 +289,10 @@ function BoardSettingsDialog({
   const { t } = useTranslation();
   const toast = useToast();
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
   const currentUser = useAuthStore((state) => state.user);
   const boardQuery = useBoard(board.id);
+  const workspacesQuery = useWorkspaces();
   const snapshot = boardQuery.data;
   const isPro = useAuthStore((state) => state.user?.plan === 'pro');
   const [name, setName] = useState(board.name);
@@ -298,6 +300,8 @@ function BoardSettingsDialog({
   const [cover, setCover] = useState(board.cover ?? LIST_COLORS[0]!);
   const [visibility, setVisibility] = useState<BoardVisibility>(board.visibility ?? 'private');
   const [saving, setSaving] = useState(false);
+  const [moveTarget, setMoveTarget] = useState('');
+  const [moving, setMoving] = useState(false);
   const [memberBusy, setMemberBusy] = useState<string | null>(null);
   const [removeCandidate, setRemoveCandidate] = useState<Member | null>(null);
 
@@ -372,6 +376,38 @@ function BoardSettingsDialog({
     }
   }
 
+  async function moveBoard() {
+    if (!moveTarget || moving) return;
+    setMoving(true);
+    try {
+      const response = await post<{ workspace: { id: string; name: string; slug: string } }>(
+        `/v1/boards/${board.id}/move`,
+        { workspaceId: moveTarget },
+      );
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['boards', board.workspace_id] }),
+        queryClient.invalidateQueries({ queryKey: ['boards', response.workspace.id] }),
+        queryClient.invalidateQueries({ queryKey: ['workspaces'] }),
+        queryClient.invalidateQueries({ queryKey: ['board', board.id] }),
+      ]);
+      toast.push(t('common.saved'), { kind: 'success' });
+      onClose();
+      await navigate({
+        to: '/app/$wsSlug/boards/$boardId',
+        params: { wsSlug: response.workspace.slug, boardId: board.id },
+      });
+    } catch (error) {
+      toast.push(
+        error instanceof ApiError
+          ? (error.problem.detail ?? t('errors.generic'))
+          : t('errors.generic'),
+        { kind: 'danger' },
+      );
+    } finally {
+      setMoving(false);
+    }
+  }
+
   return (
     <>
       <Modal
@@ -431,6 +467,41 @@ function BoardSettingsDialog({
               {visibility === 'public' ? t('board.publicHint') : t('board.privateHint')}
             </p>
           </div>
+          {canManageBoard ? (
+            <div>
+              <label className="label" htmlFor="board-settings-workspace">
+                {t('board.workspaceLabel')}
+              </label>
+              <div className="row">
+                <select
+                  id="board-settings-workspace"
+                  className="select"
+                  value={moveTarget}
+                  onChange={(event) => setMoveTarget(event.target.value)}
+                >
+                  <option value="">—</option>
+                  {(workspacesQuery.data?.data ?? [])
+                    .filter((workspace) => workspace.id !== board.workspace_id)
+                    .map((workspace) => (
+                      <option key={workspace.id} value={workspace.id}>
+                        {workspace.name}
+                      </option>
+                    ))}
+                </select>
+                <Button
+                  size="sm"
+                  variant="soft"
+                  disabled={!moveTarget || moving}
+                  onClick={() => void moveBoard()}
+                >
+                  {t('board.moveBoard')}
+                </Button>
+              </div>
+              <p className="caption subtle" style={{ marginTop: 4 }}>
+                {t('board.moveBoardHint')}
+              </p>
+            </div>
+          ) : null}
           <div>
             <span className="label">{t('workspace.cover')}</span>
             <div className="row wrap">

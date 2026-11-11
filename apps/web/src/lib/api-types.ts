@@ -164,15 +164,15 @@ export interface InvitationSummary {
 }
 
 export interface SearchResult {
-  card_id: string;
+  card_id: string | null;
   snippet: string;
   title: string;
   board_id: string;
   board_name: string;
-  list_id: string;
+  list_id: string | null;
   list_name: string;
   workspace_id: string;
-  source: 'card' | 'comment';
+  source: 'card' | 'comment' | 'board';
   comment_id?: string;
 }
 

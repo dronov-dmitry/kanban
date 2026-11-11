@@ -386,21 +386,25 @@ export function CardModal({
       ) : (
         <div className="modal-grid">
           <div>
-            <textarea
-              className="card-modal-title"
-              value={title}
-              rows={2}
-              readOnly={readOnly}
-              onChange={(event) => {
-                setTitle(event.target.value);
-                titleRef.current = event.target.value;
-              }}
-              onBlur={() => {
-                if (!readOnly && title.trim() && title !== card.title)
-                  void save({ title: title.trim() });
-              }}
-              aria-label={t('card.title')}
-            />
+            {readOnly ? (
+              <div className="card-modal-title" role="heading" aria-level={2}>
+                {card.title}
+              </div>
+            ) : (
+              <textarea
+                className="card-modal-title"
+                value={title}
+                rows={2}
+                onChange={(event) => {
+                  setTitle(event.target.value);
+                  titleRef.current = event.target.value;
+                }}
+                onBlur={() => {
+                  if (title.trim() && title !== card.title) void save({ title: title.trim() });
+                }}
+                aria-label={t('card.title')}
+              />
+            )}
 
             <div className="field-group" style={{ marginTop: 8 }}>
               <div className="spread">

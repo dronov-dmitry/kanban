@@ -36,7 +36,7 @@ export function SearchPage() {
     void navigate({
       to: '/app/$wsSlug/boards/$boardId',
       params: { wsSlug, boardId: result.board_id },
-      search: { card: result.card_id },
+      search: result.source === 'board' || !result.card_id ? {} : { card: result.card_id },
     });
   }
 
@@ -102,20 +102,33 @@ export function SearchPage() {
         <div className="card-panel" style={{ padding: 8 }}>
           {(results.data?.data ?? []).map((result) => (
             <button
-              key={`${result.card_id}-${result.source}-${result.comment_id ?? ''}`}
+              key={`${result.source}-${result.board_id}-${result.card_id ?? ''}-${result.comment_id ?? ''}`}
               type="button"
               className="notification-row"
               style={{ width: '100%', textAlign: 'left' }}
               onClick={() => open(result)}
             >
               <span className="avatar sm" aria-hidden="true">
-                <Icon name={result.source === 'comment' ? 'comment' : 'board'} size={13} />
+                <Icon
+                  name={
+                    result.source === 'board'
+                      ? 'board'
+                      : result.source === 'comment'
+                        ? 'comment'
+                        : 'edit'
+                  }
+                  size={13}
+                />
               </span>
               <span className="grow" style={{ minWidth: 0 }}>
                 <span className="spread">
                   <span className="strong small truncate">{result.title}</span>
                   <span className="badge">
-                    {result.source === 'comment' ? t('card.comments') : t('card.title')}
+                    {result.source === 'board'
+                      ? t('workspace.boards')
+                      : result.source === 'comment'
+                        ? t('card.comments')
+                        : t('card.title')}
                   </span>
                 </span>
                 <span
@@ -124,7 +137,9 @@ export function SearchPage() {
                   dangerouslySetInnerHTML={{ __html: sanitizeSnippet(result.snippet) }}
                 />
                 <span className="caption subtle">
-                  {result.board_name} · {result.list_name}
+                  {result.source === 'board'
+                    ? result.board_name
+                    : `${result.board_name} · ${result.list_name}`}
                 </span>
               </span>
             </button>

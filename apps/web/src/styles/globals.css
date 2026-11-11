@@ -996,6 +996,19 @@ img {
   width: 56px;
 }
 
+.column.collapsed .column-header {
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 2px;
+}
+
+.column.collapsed .column-title,
+.column.collapsed .column-count,
+.column.collapsed .drag-handle {
+  display: none;
+}
+
 .column-header {
   display: flex;
   align-items: center;
@@ -1082,6 +1095,70 @@ img {
 
 .card-tile.dragging {
   opacity: 0.4;
+}
+
+.card-color-bar {
+  display: block;
+  height: 4px;
+  margin: -10px -10px 2px;
+  border-radius: var(--radius-md) var(--radius-md) 0 0;
+}
+
+.card-tile-menu {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  z-index: 3;
+}
+
+.card-tile-menu-btn {
+  display: inline-grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--color-surface) 85%, transparent);
+  color: var(--color-text-muted);
+  cursor: pointer;
+  opacity: 0.55;
+  transition: opacity var(--speed-fast) var(--ease);
+}
+
+.card-tile:hover .card-tile-menu-btn,
+.card-tile-menu-btn:focus-visible {
+  opacity: 1;
+}
+
+.card-tile-menu-btn:hover {
+  background: var(--color-surface-2);
+  color: var(--color-text);
+}
+
+.card-color-label {
+  display: block;
+  padding: 4px 9px 2px;
+}
+
+.card-color-grid {
+  display: grid;
+  grid-template-columns: repeat(6, 18px);
+  gap: 4px;
+  padding: 4px 9px 6px;
+}
+
+.card-color-swatch {
+  width: 18px;
+  height: 18px;
+  border: none;
+  border-radius: 999px;
+  cursor: pointer;
+  box-shadow: var(--shadow-1);
+}
+
+.card-color-swatch:hover {
+  transform: scale(1.15);
 }
 
 .card-tile.flash {

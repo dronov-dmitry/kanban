@@ -495,6 +495,15 @@ export function BoardPage() {
     }
   }
 
+  async function archiveCardFromTile(cardId: string) {
+    await runMutation(() => patch(`/v1/cards/${cardId}`, { archived: true }));
+    toast.push(t('toast.cardArchived'), { kind: 'success' });
+  }
+
+  async function setCardColor(cardId: string, color: string | null) {
+    await runMutation(() => patch(`/v1/cards/${cardId}`, { coverRef: color }));
+  }
+
   async function addList() {
     if (!newListName.trim()) return;
     try {
@@ -1114,6 +1123,8 @@ export function BoardPage() {
                                 selected={search.card === card.id}
                                 canWrite={canWrite}
                                 onOpen={() => openCard(card.id)}
+                                onArchive={() => void archiveCardFromTile(card.id)}
+                                onColor={(color) => void setCardColor(card.id, color)}
                               />
                             ))}
                           </div>
@@ -1767,6 +1778,8 @@ function SortableCard(props: {
   selected?: boolean;
   canWrite: boolean;
   onOpen: () => void;
+  onArchive?: () => void;
+  onColor?: (color: string | null) => void;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: props.card.id,
