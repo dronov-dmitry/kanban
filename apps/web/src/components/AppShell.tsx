@@ -3,7 +3,7 @@ import { Link, Outlet, useNavigate, useParams, useRouterState } from '@tanstack/
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { setLanguage } from '../i18n';
-import { get, patch, post } from '../lib/api';
+import { del, get, patch, post } from '../lib/api';
 import type { BoardSnapshotResponse, NotificationRow, WorkspaceSummary } from '../lib/api-types';
 import { useAuthStore } from '../lib/auth-store';
 import { clearOfflineData, outboxCount } from '../lib/offline';
@@ -182,6 +182,12 @@ export function AppShell() {
   async function markAllRead() {
     await post('/v1/notifications/read', { all: true });
     await queryClient.invalidateQueries({ queryKey: ['notifications'] });
+  }
+
+  async function clearNotifications() {
+    await del('/v1/notifications');
+    await queryClient.invalidateQueries({ queryKey: ['notifications'] });
+    toast.push(t('notifications.cleared'), { kind: 'success' });
   }
 
   async function openNotification(notification: NotificationRow) {
@@ -524,13 +530,23 @@ export function AppShell() {
                     >
                       <div className="spread" style={{ padding: '4px 6px 6px' }}>
                         <span className="strong small">{t('notifications.title')}</span>
-                        <button
-                          type="button"
-                          className="btn ghost sm"
-                          onClick={() => void markAllRead()}
-                        >
-                          {t('notifications.markAll')}
-                        </button>
+                        <span className="row" style={{ gap: 2 }}>
+                          <button
+                            type="button"
+                            className="btn ghost sm"
+                            onClick={() => void markAllRead()}
+                          >
+                            {t('notifications.markAll')}
+                          </button>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            icon="trash"
+                            aria-label={t('notifications.clear')}
+                            title={t('notifications.clear')}
+                            onClick={() => void clearNotifications()}
+                          />
+                        </span>
                       </div>
                       {(notifications.data?.data ?? []).length === 0 ? (
                         <p className="small muted" style={{ padding: 10 }}>

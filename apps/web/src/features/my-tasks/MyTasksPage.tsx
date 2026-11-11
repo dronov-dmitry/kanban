@@ -41,7 +41,8 @@ export function MyTasksPage() {
         <div>
           <h1>{t('nav.myTasks')}</h1>
           <p className="muted small" style={{ marginTop: 4 }}>
-            {workspace?.name} · {taskCountLabel(cards.length, i18n.language)}
+            {workspace?.name} · {taskCountLabel(cards.length, i18n.language)} ·{' '}
+            {t('workspace.myTasksHint')}
           </p>
         </div>
         {workspace ? (
@@ -61,7 +62,7 @@ export function MyTasksPage() {
         <EmptyState
           icon="checklist"
           title={t('common.noData')}
-          text={t('card.assignees')}
+          text={t('workspace.myTasksEmpty')}
           action={
             workspace ? (
               <Link to="/app/$wsSlug" params={{ wsSlug: workspace.slug }} className="btn primary">

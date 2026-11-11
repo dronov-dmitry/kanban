@@ -140,7 +140,7 @@ export function SearchPage() {
                         ? t('workspace.boards')
                         : result.source === 'comment'
                           ? t('card.comments')
-                          : t('card.title')}
+                          : t('card.resultCard')}
                   </span>
                 </span>
                 <span

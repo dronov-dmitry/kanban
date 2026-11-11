@@ -242,6 +242,8 @@
     "favorite": "Add to favourites",
     "unfavorite": "Remove from favourites",
     "myTasks": "My tasks",
+    "myTasksHint": "Cards where you are assigned as an assignee appear here.",
+    "myTasksEmpty": "Assign yourself on a card in any board and it will appear here.",
     "members": "Members",
     "noWorkspaces": "No workspaces",
     "createFirstWorkspace": "Create a workspace",
@@ -392,6 +394,7 @@
   },
   "card": {
     "title": "Title",
+    "resultCard": "Card",
     "description": "Description",
     "noDescription": "Add a description — Markdown is supported.",
     "labels": "Labels",
@@ -466,6 +469,8 @@
   "notifications": {
     "title": "Notifications",
     "markAll": "Mark all as read",
+    "clear": "Clear notifications",
+    "cleared": "Notifications cleared",
     "empty": "No new notifications.",
     "newComment": "New comment",
     "assigned": "You were assigned",
