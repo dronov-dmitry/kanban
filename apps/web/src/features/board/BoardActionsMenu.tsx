@@ -671,7 +671,11 @@ function BoardSettingsDialog({
                         <span className="badge primary">{t('board.ownerBadge')}</span>
                       ) : null}
                     </div>
-                    <div className="caption subtle truncate">{member.email}</div>
+                    {member.email ? (
+                      <a className="caption subtle truncate" href={`mailto:${member.email}`}>
+                        {member.email}
+                      </a>
+                    ) : null}
                     {member.source_workspace_name ? (
                       <div className="caption subtle truncate">
                         {t(

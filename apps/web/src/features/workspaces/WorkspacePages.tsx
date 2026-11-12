@@ -205,21 +205,40 @@ export function WorkspaceHomePage() {
         <div>
           <div className="row" style={{ gap: 8 }}>
             <h1>{workspace.name}</h1>
-            {role === 'owner' || role === 'manager' ? (
-              <Menu
-                trigger={(props) => (
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    icon="more"
-                    aria-label={t('common.actions')}
-                    {...props}
-                  />
-                )}
-              >
+            <Menu
+              trigger={(props) => (
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  icon="more"
+                  aria-label={t('common.actions')}
+                  {...props}
+                />
+              )}
+            >
+              {role === 'owner' || role === 'manager' ? (
                 <MenuItem icon="users" onClick={() => setInviteOpen(true)}>
                   {t('board.invite')}
                 </MenuItem>
+              ) : null}
+              <MenuItem
+                icon="users"
+                onClick={() =>
+                  void navigate({
+                    to: '/app/$wsSlug/settings',
+                    params: { wsSlug: workspace.slug },
+                    search: { tab: 'members' },
+                  })
+                }
+              >
+                {t('settings.members')}
+              </MenuItem>
+              {isPro && canCreate ? (
+                <MenuItem icon="upload" onClick={() => importRef.current?.click()}>
+                  {t('workspace.importBoard')}
+                </MenuItem>
+              ) : null}
+              {role === 'owner' || role === 'manager' ? (
                 <MenuItem
                   icon="settings"
                   onClick={() =>
@@ -232,8 +251,8 @@ export function WorkspaceHomePage() {
                 >
                   {t('nav.settings')}
                 </MenuItem>
-              </Menu>
-            ) : null}
+              ) : null}
+            </Menu>
           </div>
           <p className="muted small" style={{ marginTop: 4 }}>
             {t('workspace.boards')}: {list.length} · {t('workspace.members')}:{' '}

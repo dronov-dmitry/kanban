@@ -324,7 +324,11 @@ export function WorkspaceSettingsPage() {
                       {member.display_name}{' '}
                       {member.user_id === user?.id ? `(${t('common.you')})` : ''}
                     </div>
-                    <div className="caption subtle truncate">{member.email}</div>
+                    {member.email ? (
+                      <a className="caption subtle truncate" href={`mailto:${member.email}`}>
+                        {member.email}
+                      </a>
+                    ) : null}
                   </div>
                   {isManager && member.role !== 'owner' && member.user_id !== user?.id ? (
                     <select
