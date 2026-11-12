@@ -283,6 +283,8 @@
     "deleteBoard": "Удалить доску",
     "archiveBoard": "Архивировать доску",
     "exportJson": "Экспорт JSON",
+    "importCard": "Импорт карточки JSON",
+    "importCardDone": "Карточка импортирована.",
     "exportCsv": "Экспорт CSV",
     "exportMd": "Экспорт Markdown",
     "share": "Поделиться",

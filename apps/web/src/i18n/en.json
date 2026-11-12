@@ -283,6 +283,8 @@
     "deleteBoard": "Delete board",
     "archiveBoard": "Archive board",
     "exportJson": "Export JSON",
+    "importCard": "Import card JSON",
+    "importCardDone": "Card imported.",
     "exportCsv": "Export CSV",
     "exportMd": "Export Markdown",
     "share": "Share",

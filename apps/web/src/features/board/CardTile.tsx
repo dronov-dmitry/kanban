@@ -18,6 +18,7 @@ export function CardTile({
   onOpen,
   onArchive,
   onColor,
+  onExport,
 }: {
   card: Card;
   labels: CardLabel[];
@@ -32,6 +33,7 @@ export function CardTile({
   onOpen?: () => void;
   onArchive?: () => void;
   onColor?: (color: string | null) => void;
+  onExport?: () => void;
 }) {
   const { t, i18n } = useTranslation();
   const urgency = dueUrgency(card.due_date, card.due_done === 1);
@@ -56,7 +58,7 @@ export function CardTile({
       {coverColor ? (
         <span className="card-color-bar" style={{ background: coverColor }} aria-hidden="true" />
       ) : null}
-      {canWrite && (onArchive || onColor) ? (
+      {(canWrite && (onArchive || onColor)) || onExport ? (
         <div
           className="card-tile-menu"
           onClick={(event) => {
@@ -80,6 +82,11 @@ export function CardTile({
             {onArchive ? (
               <MenuItem icon="archive" onClick={onArchive}>
                 {t('card.archive')}
+              </MenuItem>
+            ) : null}
+            {onExport ? (
+              <MenuItem icon="download" onClick={onExport}>
+                {t('board.exportJson')}
               </MenuItem>
             ) : null}
             {onColor ? (

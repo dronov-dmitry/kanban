@@ -51,7 +51,15 @@ import {
   useToast,
 } from '../../components/ui';
 import { useWorkspace } from '../../components/workspace-context';
-import { ApiError, del, get, OfflineQueuedError, patch, post } from '../../lib/api';
+import {
+  ApiError,
+  del,
+  downloadWithAuth,
+  get,
+  OfflineQueuedError,
+  patch,
+  post,
+} from '../../lib/api';
 import type { BoardShareLinkRow, BoardSnapshotResponse } from '../../lib/api-types';
 import { useAuthStore } from '../../lib/auth-store';
 import { useBoard, useMembers, useSavedViews } from '../../lib/queries';
@@ -88,6 +96,7 @@ export function BoardPage() {
   const membersQuery = useMembers(workspace?.id);
   const viewsQuery = useSavedViews(workspace?.id);
   const currentUser = useAuthStore((state) => state.user);
+  const isPro = currentUser?.plan === 'pro';
   const searchRef = useRef(search);
   searchRef.current = search;
   const lastFilterString = useRef(serializeFilters(parseFilters(search.f)));
@@ -130,6 +139,8 @@ export function BoardPage() {
   const [online, setOnline] = useState(navigator.onLine);
   const [addPromptOpen, setAddPromptOpen] = useState(false);
   const [addPromptBusy, setAddPromptBusy] = useState(false);
+  const [importCardListId, setImportCardListId] = useState<string | null>(null);
+  const cardImportRef = useRef<HTMLInputElement>(null);
 
   const snapshot = boardQuery.data;
   const lists = snapshot?.lists ?? [];
@@ -504,6 +515,37 @@ export function BoardPage() {
 
   async function setCardColor(cardId: string, color: string | null) {
     await runMutation(() => patch(`/v1/cards/${cardId}`, { coverRef: color }));
+  }
+
+  function exportCardJson(card: Card) {
+    void downloadWithAuth(
+      `/v1/cards/${card.id}/export`,
+      `${card.title.replace(/[^\w.-]+/g, '_').slice(0, 80) || 'card'}.json`,
+    );
+  }
+
+  async function importCardFile(file: File) {
+    if (!importCardListId) return;
+    try {
+      const payload = JSON.parse(await file.text());
+      await post(`/v1/lists/${importCardListId}/cards/import`, payload);
+      await queryClient.invalidateQueries({ queryKey: ['board', boardId] });
+      toast.push(t('board.importCardDone'), { kind: 'success' });
+    } catch (error) {
+      toast.push(
+        error instanceof ApiError
+          ? error.code === 'pro_required'
+            ? t('errors.proRequired')
+            : error.code === 'invalid_import'
+              ? t('errors.importInvalid')
+              : (error.problem.detail ?? t('errors.importFailed'))
+          : t('errors.importInvalid'),
+        { kind: 'danger' },
+      );
+    } finally {
+      setImportCardListId(null);
+      if (cardImportRef.current) cardImportRef.current.value = '';
+    }
   }
 
   async function addList() {
@@ -1087,6 +1129,14 @@ export function BoardPage() {
                       })
                     }
                     onArchive={() => setDeleteList(list)}
+                    onImportCard={
+                      isPro && canWrite
+                        ? () => {
+                            setImportCardListId(list.id);
+                            cardImportRef.current?.click();
+                          }
+                        : undefined
+                    }
                   >
                     {editingList?.id === list.id ? (
                       <input
@@ -1128,8 +1178,15 @@ export function BoardPage() {
                                 selected={search.card === card.id}
                                 canWrite={canWrite}
                                 onOpen={() => openCard(card.id)}
-                                onArchive={() => void archiveCardFromTile(card.id)}
-                                onColor={(color) => void setCardColor(card.id, color)}
+                                onArchive={
+                                  canWrite ? () => void archiveCardFromTile(card.id) : undefined
+                                }
+                                onColor={
+                                  canWrite
+                                    ? (color) => void setCardColor(card.id, color)
+                                    : undefined
+                                }
+                                onExport={() => exportCardJson(card)}
                               />
                             ))}
                           </div>
@@ -1341,6 +1398,17 @@ export function BoardPage() {
       {search.card ? (
         <CardModal cardId={search.card} onClose={closeCard} readOnly={effectiveRole === 'viewer'} />
       ) : null}
+
+      <input
+        ref={cardImportRef}
+        type="file"
+        accept=".json,application/json"
+        style={{ display: 'none' }}
+        onChange={(event) => {
+          const file = event.target.files?.[0];
+          if (file) void importCardFile(file);
+        }}
+      />
 
       <Modal
         open={Boolean(pendingMove)}
@@ -1786,6 +1854,7 @@ function SortableCard(props: {
   onOpen: () => void;
   onArchive?: () => void;
   onColor?: (color: string | null) => void;
+  onExport?: () => void;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: props.card.id,
@@ -1818,6 +1887,7 @@ function SortableColumn({
   onWip,
   onColor,
   onArchive,
+  onImportCard,
 }: {
   list: BoardList;
   collapsed: boolean;
@@ -1829,6 +1899,7 @@ function SortableColumn({
   onWip: () => void;
   onColor: () => void;
   onArchive: () => void;
+  onImportCard?: () => void;
 }) {
   const { t } = useTranslation();
   const { setNodeRef, attributes, listeners, transform, transition, isDragging, isOver } =
@@ -1898,6 +1969,11 @@ function SortableColumn({
               <MenuItem icon={collapsed ? 'chevron-right' : 'chevron-left'} onClick={onCollapse}>
                 {collapsed ? t('board.expand') : t('board.collapse')}
               </MenuItem>
+              {onImportCard ? (
+                <MenuItem icon="upload" onClick={onImportCard}>
+                  {t('board.importCard')}
+                </MenuItem>
+              ) : null}
               <div className="menu-separator" />
               <MenuItem icon="archive" danger onClick={onArchive}>
                 {t('board.deleteList')}

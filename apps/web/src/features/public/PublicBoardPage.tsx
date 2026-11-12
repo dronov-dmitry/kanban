@@ -311,12 +311,29 @@ export function PublicBoardPage() {
                   {(linksByCard.get(selectedCard.id) ?? []).map((link) => (
                     <a
                       key={link.id}
-                      className="small"
+                      className="attachment-row"
                       href={link.url}
                       target="_blank"
                       rel="noopener noreferrer"
+                      style={{ color: 'inherit', textDecoration: 'none' }}
                     >
-                      <Icon name="link" size={12} /> {link.title || link.url}
+                      <span className="attachment-thumb">
+                        <Icon name="link" size={16} />
+                      </span>
+                      <span className="grow" style={{ minWidth: 0 }}>
+                        <span
+                          className="small strong truncate"
+                          style={{ display: 'block', color: 'var(--color-primary)' }}
+                        >
+                          {link.title || link.url}
+                        </span>
+                        {link.title ? (
+                          <span className="caption subtle truncate" style={{ display: 'block' }}>
+                            {link.url}
+                          </span>
+                        ) : null}
+                      </span>
+                      <Icon name="external" size={14} />
                     </a>
                   ))}
                 </div>
