@@ -228,6 +228,7 @@ export interface PublicBoardResponse {
     avatar_url: string | null;
   }>;
   checklists: Array<import('@kanban/shared').Checklist>;
+  links: Array<import('@kanban/shared').CardLink>;
 }
 
 export interface PublicBoardRequestState {

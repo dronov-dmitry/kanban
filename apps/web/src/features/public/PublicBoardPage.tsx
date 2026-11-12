@@ -1,4 +1,4 @@
-import type { Card, CardLabel, Checklist, Member } from '@kanban/shared';
+import type { Card, CardLabel, CardLink, Checklist, Member } from '@kanban/shared';
 import { useQuery } from '@tanstack/react-query';
 import { useParams } from '@tanstack/react-router';
 import { useState } from 'react';
@@ -108,6 +108,12 @@ export function PublicBoardPage() {
     const list = checklistsByCard.get(checklist.card_id) ?? [];
     list.push(checklist);
     checklistsByCard.set(checklist.card_id, list);
+  }
+  const linksByCard = new Map<string, CardLink[]>();
+  for (const link of data.links ?? []) {
+    const list = linksByCard.get(link.card_id) ?? [];
+    list.push(link);
+    linksByCard.set(link.card_id, list);
   }
   const assigneeIdsByCard = new Map<string, string[]>();
   for (const row of data.card_assignees) {
@@ -274,11 +280,7 @@ export function PublicBoardPage() {
                     if (!member) return null;
                     return (
                       <span className="row" key={id} style={{ gap: 5 }}>
-                        <Avatar
-                          name={member.display_name}
-                          src={member.avatar_url}
-                          size="sm"
-                        />
+                        <Avatar name={member.display_name} src={member.avatar_url} size="sm" />
                         <span className="small">{member.display_name}</span>
                       </span>
                     );
@@ -302,6 +304,24 @@ export function PublicBoardPage() {
                 </div>
               </div>
             ))}
+            {(linksByCard.get(selectedCard.id) ?? []).length > 0 ? (
+              <div>
+                <span className="field-label">{t('card.links')}</span>
+                <div className="stack" style={{ gap: 4, marginTop: 4 }}>
+                  {(linksByCard.get(selectedCard.id) ?? []).map((link) => (
+                    <a
+                      key={link.id}
+                      className="small"
+                      href={link.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      <Icon name="link" size={12} /> {link.title || link.url}
+                    </a>
+                  ))}
+                </div>
+              </div>
+            ) : null}
           </div>
         ) : null}
       </Modal>

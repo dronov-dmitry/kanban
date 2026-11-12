@@ -39,6 +39,23 @@ import {
 
 const PRIORITIES = ['low', 'normal', 'high', 'urgent'] as const;
 
+/**
+ * Accepts a URL with or without a scheme (`example.com` → `https://example.com`),
+ * rejects everything that is not plain http/https.
+ */
+function normalizeHttpUrl(value: string): string | null {
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+  const withScheme = /^[a-z][a-z0-9+.-]*:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
+  try {
+    const url = new URL(withScheme);
+    if (url.protocol !== 'http:' && url.protocol !== 'https:') return null;
+    return url.toString();
+  } catch {
+    return null;
+  }
+}
+
 export function CardModal({
   cardId,
   onClose,
@@ -65,6 +82,11 @@ export function CardModal({
   const [checklistInputs, setChecklistInputs] = useState<Record<string, string>>({});
   const [uploading, setUploading] = useState(false);
   const [dragOver, setDragOver] = useState(false);
+  const [linkUrl, setLinkUrl] = useState('');
+  const [linkTitle, setLinkTitle] = useState('');
+  const [editingLinkId, setEditingLinkId] = useState<string | null>(null);
+  const [editLinkUrl, setEditLinkUrl] = useState('');
+  const [editLinkTitle, setEditLinkTitle] = useState('');
   const [activityOpen, setActivityOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const initialized = useRef<string | null>(null);
@@ -262,6 +284,82 @@ export function CardModal({
     await queryClient.invalidateQueries({ queryKey: ['card', cardId] });
   }
 
+  async function addLink() {
+    if (!card) return;
+    const url = normalizeHttpUrl(linkUrl);
+    if (!url) {
+      toast.push(t('card.linkInvalid'), { kind: 'danger' });
+      return;
+    }
+    try {
+      await post(`/v1/cards/${card.id}/links`, { url, title: linkTitle.trim() });
+      setLinkUrl('');
+      setLinkTitle('');
+      await queryClient.invalidateQueries({ queryKey: ['card', cardId] });
+    } catch (error) {
+      if (error instanceof OfflineQueuedError) {
+        toast.push(t('errors.offlineQueued'));
+        setLinkUrl('');
+        setLinkTitle('');
+        return;
+      }
+      toast.push(
+        error instanceof ApiError
+          ? (error.problem.detail ?? t('errors.generic'))
+          : t('errors.generic'),
+        { kind: 'danger' },
+      );
+    }
+  }
+
+  async function saveLink(linkId: string) {
+    const url = normalizeHttpUrl(editLinkUrl);
+    if (!url) {
+      toast.push(t('card.linkInvalid'), { kind: 'danger' });
+      return;
+    }
+    try {
+      await patch(`/v1/links/${linkId}`, { url, title: editLinkTitle.trim() });
+      setEditingLinkId(null);
+      await queryClient.invalidateQueries({ queryKey: ['card', cardId] });
+    } catch (error) {
+      if (error instanceof OfflineQueuedError) {
+        toast.push(t('errors.offlineQueued'));
+        setEditingLinkId(null);
+        return;
+      }
+      toast.push(
+        error instanceof ApiError
+          ? (error.problem.detail ?? t('errors.generic'))
+          : t('errors.generic'),
+        { kind: 'danger' },
+      );
+    }
+  }
+
+  async function removeLink(linkId: string) {
+    try {
+      await del(`/v1/links/${linkId}`);
+      await queryClient.invalidateQueries({ queryKey: ['card', cardId] });
+    } catch (error) {
+      if (error instanceof OfflineQueuedError) {
+        toast.push(t('errors.offlineQueued'));
+        return;
+      }
+      toast.push(
+        error instanceof ApiError
+          ? (error.problem.detail ?? t('errors.generic'))
+          : t('errors.generic'),
+        { kind: 'danger' },
+      );
+    }
+  }
+
+  function copyLinkUrl(url: string) {
+    void navigator.clipboard.writeText(url);
+    toast.push(t('common.copied'), { kind: 'success' });
+  }
+
   async function archiveCard() {
     if (!card) return;
     await save({ archived: true });
@@ -324,6 +422,7 @@ export function CardModal({
       (sum, checklist) => sum + checklist.items.filter((item) => item.is_done === 1).length,
       0,
     ) ?? 0;
+  const links = card?.links ?? [];
 
   return (
     <Modal
@@ -501,6 +600,142 @@ export function CardModal({
                 {t('card.addChecklist')}
               </Button>
             )}
+
+            <section style={{ marginTop: 20 }}>
+              <h3 className="field-label" style={{ marginBottom: 6 }}>
+                {t('card.links')} ({links.length})
+              </h3>
+              {links.length === 0 ? <p className="small subtle">{t('card.noLinks')}</p> : null}
+              {links.map((link) =>
+                editingLinkId === link.id ? (
+                  <div className="attachment-row" key={link.id}>
+                    <span className="attachment-thumb">
+                      <Icon name="link" size={16} />
+                    </span>
+                    <span className="grow stack tight" style={{ minWidth: 0 }}>
+                      <input
+                        className="input"
+                        style={{ minHeight: 30, padding: '4px 8px' }}
+                        placeholder={t('card.linkTitle')}
+                        value={editLinkTitle}
+                        onChange={(event) => setEditLinkTitle(event.target.value)}
+                        aria-label={t('card.linkTitle')}
+                      />
+                      <input
+                        className="input"
+                        style={{ minHeight: 30, padding: '4px 8px' }}
+                        placeholder={t('card.linkUrl')}
+                        value={editLinkUrl}
+                        onChange={(event) => setEditLinkUrl(event.target.value)}
+                        onKeyDown={(event) => {
+                          if (event.key === 'Enter') void saveLink(link.id);
+                          if (event.key === 'Escape') setEditingLinkId(null);
+                        }}
+                        aria-label={t('card.linkUrl')}
+                      />
+                    </span>
+                    <Button size="sm" variant="primary" onClick={() => void saveLink(link.id)}>
+                      {t('common.save')}
+                    </Button>
+                    <Button size="sm" variant="ghost" onClick={() => setEditingLinkId(null)}>
+                      {t('common.cancel')}
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="attachment-row" key={link.id}>
+                    <span className="attachment-thumb">
+                      <Icon name="link" size={16} />
+                    </span>
+                    <span className="grow" style={{ minWidth: 0 }}>
+                      <a
+                        className="truncate"
+                        style={{ display: 'block' }}
+                        href={link.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        {link.title || link.url}
+                      </a>
+                      {link.title ? (
+                        <span className="caption subtle truncate" style={{ display: 'block' }}>
+                          {link.url}
+                        </span>
+                      ) : null}
+                    </span>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      icon="external"
+                      aria-label={t('common.open')}
+                      onClick={() => window.open(link.url, '_blank', 'noopener,noreferrer')}
+                    />
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      icon="copy"
+                      aria-label={t('common.copy')}
+                      onClick={() => copyLinkUrl(link.url)}
+                    />
+                    {readOnly ? null : (
+                      <>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          icon="edit"
+                          aria-label={t('common.edit')}
+                          onClick={() => {
+                            setEditingLinkId(link.id);
+                            setEditLinkUrl(link.url);
+                            setEditLinkTitle(link.title);
+                          }}
+                        />
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          icon="trash"
+                          aria-label={t('common.delete')}
+                          onClick={() => void removeLink(link.id)}
+                        />
+                      </>
+                    )}
+                  </div>
+                ),
+              )}
+              {readOnly ? null : (
+                <div className="row" style={{ gap: 6, marginTop: 8 }}>
+                  <input
+                    className="input grow"
+                    style={{ minHeight: 32, padding: '4px 8px' }}
+                    placeholder={t('card.linkUrl')}
+                    value={linkUrl}
+                    onChange={(event) => setLinkUrl(event.target.value)}
+                    onKeyDown={(event) => {
+                      if (event.key === 'Enter') void addLink();
+                    }}
+                    aria-label={t('card.linkUrl')}
+                  />
+                  <input
+                    className="input"
+                    style={{ minHeight: 32, padding: '4px 8px', flex: 'none', width: 150 }}
+                    placeholder={t('card.linkTitle')}
+                    value={linkTitle}
+                    onChange={(event) => setLinkTitle(event.target.value)}
+                    onKeyDown={(event) => {
+                      if (event.key === 'Enter') void addLink();
+                    }}
+                    aria-label={t('card.linkTitle')}
+                  />
+                  <Button
+                    size="sm"
+                    icon="plus"
+                    onClick={() => void addLink()}
+                    disabled={!linkUrl.trim()}
+                  >
+                    {t('card.addLink')}
+                  </Button>
+                </div>
+              )}
+            </section>
 
             <section style={{ marginTop: 20 }}>
               <h3 className="field-label" style={{ marginBottom: 6 }}>

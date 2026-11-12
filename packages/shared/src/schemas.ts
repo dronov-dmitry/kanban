@@ -224,6 +224,30 @@ export const checklistItemPatchSchema = z.object({
   assigneeId: z.string().nullable().optional(),
 });
 
+/** Only plain web URLs are accepted; `javascript:` and friends are rejected. */
+const linkUrlSchema = z
+  .string()
+  .trim()
+  .max(2048)
+  .refine((value) => {
+    try {
+      const protocol = new URL(value).protocol;
+      return protocol === 'http:' || protocol === 'https:';
+    } catch {
+      return false;
+    }
+  }, 'invalid url');
+
+export const cardLinkCreateSchema = z.object({
+  url: linkUrlSchema,
+  title: z.string().trim().max(200).default(''),
+});
+
+export const cardLinkPatchSchema = z.object({
+  url: linkUrlSchema.optional(),
+  title: z.string().trim().max(200).optional(),
+});
+
 export const attachmentRegisterSchema = z.object({
   key: z.string().min(1).max(500),
   filename: z.string().min(1).max(255),

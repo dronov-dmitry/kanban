@@ -86,6 +86,9 @@ export function AboutPage() {
             <a href="https://dronov-dmitry.github.io/kanban/" className="btn">
               {t('about.openSite')} <Icon name="external" size={15} />
             </a>
+            <a href="https://youtu.be/2A1yRJGfxOA" className="btn" target="_blank" rel="noreferrer">
+              {t('about.videoLink')} <Icon name="external" size={15} />
+            </a>
           </div>
         </div>
       </header>

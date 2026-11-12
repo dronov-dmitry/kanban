@@ -201,6 +201,16 @@ export interface Attachment {
   created_at: number;
 }
 
+export interface CardLink {
+  id: string;
+  card_id: string;
+  title: string;
+  url: string;
+  position: string;
+  created_by: string;
+  created_at: number;
+}
+
 export interface ActivityEvent {
   id: string;
   workspace_id: string;
@@ -266,6 +276,7 @@ export interface CardDetail extends Card {
   checklists: Checklist[];
   comments: Comment[];
   attachments: Attachment[];
+  links: CardLink[];
   activity: ActivityEvent[];
 }
 
