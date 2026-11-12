@@ -74,6 +74,27 @@ export function AppShell() {
   }, [auth.settings?.theme]);
 
   useEffect(() => {
+    const onUpdate = () => {
+      toast.push(t('common.updateAvailable'), {
+        action: {
+          label: t('common.reload'),
+          onClick: () => {
+            const update = (
+              window as unknown as {
+                __kanbanUpdateSW?: (reloadPage?: boolean) => Promise<void>;
+              }
+            ).__kanbanUpdateSW;
+            if (update) void update(true);
+            else window.location.reload();
+          },
+        },
+      });
+    };
+    window.addEventListener('kanban:update-ready', onUpdate);
+    return () => window.removeEventListener('kanban:update-ready', onUpdate);
+  }, [toast, t]);
+
+  useEffect(() => {
     const refresh = () => {
       setOnline(navigator.onLine);
       void outboxCount().then(setPending);

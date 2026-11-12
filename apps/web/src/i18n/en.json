@@ -13,6 +13,8 @@
     "retry": "Retry",
     "copy": "Copy",
     "copied": "Copied",
+    "updateAvailable": "A new app version is available",
+    "reload": "Reload",
     "open": "Open",
     "back": "Back",
     "all": "All",

@@ -45,7 +45,7 @@ export default defineConfig({
     react(),
     productionCsp(),
     VitePWA({
-      registerType: 'autoUpdate',
+      registerType: 'prompt',
       includeAssets: ['favicon.svg', 'icons/apple-touch-icon.png'],
       manifest: {
         name: 'Kanban',
