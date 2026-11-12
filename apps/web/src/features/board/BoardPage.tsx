@@ -524,13 +524,25 @@ export function BoardPage() {
     );
   }
 
+  function exportListCardsJson(list: { id: string; name: string }) {
+    void downloadWithAuth(
+      `/v1/lists/${list.id}/cards/export`,
+      `${list.name.replace(/[^\w.-]+/g, '_').slice(0, 80) || 'list'}.json`,
+    );
+  }
+
   async function importCardFile(file: File) {
     if (!importCardListId) return;
     try {
       const payload = JSON.parse(await file.text());
-      await post(`/v1/lists/${importCardListId}/cards/import`, payload);
+      const result = await post<{ imported?: number }>(
+        `/v1/lists/${importCardListId}/cards/import`,
+        payload,
+      );
       await queryClient.invalidateQueries({ queryKey: ['board', boardId] });
-      toast.push(t('board.importCardDone'), { kind: 'success' });
+      toast.push(t('board.importCardDone', { total: result?.imported ?? 1 }), {
+        kind: 'success',
+      });
     } catch (error) {
       toast.push(
         error instanceof ApiError
@@ -1129,6 +1141,7 @@ export function BoardPage() {
                       })
                     }
                     onArchive={() => setDeleteList(list)}
+                    onExportCards={() => exportListCardsJson(list)}
                     onImportCard={
                       isPro && canWrite
                         ? () => {
@@ -1887,6 +1900,7 @@ function SortableColumn({
   onWip,
   onColor,
   onArchive,
+  onExportCards,
   onImportCard,
 }: {
   list: BoardList;
@@ -1899,6 +1913,7 @@ function SortableColumn({
   onWip: () => void;
   onColor: () => void;
   onArchive: () => void;
+  onExportCards?: () => void;
   onImportCard?: () => void;
 }) {
   const { t } = useTranslation();
@@ -1969,6 +1984,11 @@ function SortableColumn({
               <MenuItem icon={collapsed ? 'chevron-right' : 'chevron-left'} onClick={onCollapse}>
                 {collapsed ? t('board.expand') : t('board.collapse')}
               </MenuItem>
+              {onExportCards ? (
+                <MenuItem icon="download" onClick={onExportCards}>
+                  {t('board.exportJson')}
+                </MenuItem>
+              ) : null}
               {onImportCard ? (
                 <MenuItem icon="upload" onClick={onImportCard}>
                   {t('board.importCard')}

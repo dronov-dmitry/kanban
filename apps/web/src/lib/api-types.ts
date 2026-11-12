@@ -316,6 +316,14 @@ export interface BillingPlan {
   period_days: number;
 }
 
+export interface BillingPlanOption {
+  code: 'monthly' | 'yearly';
+  amount: string;
+  currency: string;
+  period_days: number;
+  savings_percent: number;
+}
+
 export interface BillingSubscription {
   plan: 'free' | 'pro';
   status: 'active' | 'free';
@@ -336,6 +344,7 @@ export interface BillingPaymentRow {
 export interface BillingInfo {
   configured: boolean;
   plan: BillingPlan;
+  plans: BillingPlanOption[];
   subscription: BillingSubscription;
   payments: BillingPaymentRow[];
 }

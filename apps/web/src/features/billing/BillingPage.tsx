@@ -26,7 +26,7 @@ function hasRecentPending(payments: BillingPaymentRow[]): boolean {
 export function BillingPage() {
   const { t, i18n } = useTranslation();
   const toast = useToast();
-  const [paying, setPaying] = useState(false);
+  const [paying, setPaying] = useState<'monthly' | 'yearly' | null>(null);
 
   const billing = useQuery<BillingInfo>({
     queryKey: ['billing'],
@@ -59,11 +59,23 @@ export function BillingPage() {
   const periodEnd = data.subscription.current_period_end;
   const expired = Boolean(periodEnd && periodEnd <= Date.now());
   const pending = hasRecentPending(data.payments);
+  const plans = data.plans?.length
+    ? data.plans
+    : [
+        {
+          code: 'monthly' as const,
+          amount: data.plan.amount,
+          currency: data.plan.currency,
+          period_days: data.plan.period_days,
+          savings_percent: 0,
+        },
+      ];
+  const monthly = plans.find((option) => option.code === 'monthly');
 
-  async function pay() {
-    setPaying(true);
+  async function pay(period: 'monthly' | 'yearly') {
+    setPaying(period);
     try {
-      const response = await post<{ payment_url: string }>('/v1/billing/checkout', {});
+      const response = await post<{ payment_url: string }>('/v1/billing/checkout', { period });
       if (response.payment_url) {
         window.location.assign(response.payment_url);
         return;
@@ -72,7 +84,7 @@ export function BillingPage() {
     } catch (error: any) {
       toast.push(error?.problem?.detail ?? t('errors.generic'), { kind: 'danger' });
     } finally {
-      setPaying(false);
+      setPaying(null);
     }
   }
 
@@ -117,14 +129,7 @@ export function BillingPage() {
         </section>
 
         <section className="card-panel">
-          <div className="spread" style={{ alignItems: 'baseline', gap: 12 }}>
-            <h2 style={{ fontSize: 16 }}>
-              {t('billing.proTitle', { days: data.plan.period_days })}
-            </h2>
-            <div className="strong" style={{ fontSize: 20 }}>
-              {data.plan.amount} {data.plan.currency}
-            </div>
-          </div>
+          <h2 style={{ fontSize: 16 }}>{t('billing.choosePeriod')}</h2>
           <p className="small muted" style={{ marginTop: 6 }}>
             {t('billing.proHint')}
           </p>
@@ -133,6 +138,56 @@ export function BillingPage() {
             <li>{t('billing.proFeature2')}</li>
             <li>{t('billing.proFeature3')}</li>
           </ul>
+
+          <div className="price-grid" style={{ marginTop: 16 }}>
+            {plans.map((option) => {
+              const yearly = option.code === 'yearly';
+              const savedAmount =
+                yearly && monthly
+                  ? Math.max(0, Number(monthly.amount) * 12 - Number(option.amount))
+                  : 0;
+              return (
+                <div className={yearly ? 'price featured' : 'price'} key={option.code}>
+                  <div className="spread" style={{ alignItems: 'center', gap: 8 }}>
+                    <span className="small strong">
+                      {yearly ? t('billing.yearlyPlan') : t('billing.monthlyPlan')}
+                    </span>
+                    {yearly && option.savings_percent > 0 ? (
+                      <span className="badge success">
+                        {t('billing.savePercent', { percent: option.savings_percent })}
+                      </span>
+                    ) : null}
+                  </div>
+                  <div className="amount">
+                    {option.amount} <span className="small muted">{option.currency}</span>
+                  </div>
+                  <div className="caption subtle">
+                    {yearly ? t('billing.perYear') : t('billing.perMonth')}
+                  </div>
+                  {savedAmount > 0 ? (
+                    <div
+                      className="caption"
+                      style={{ color: 'var(--color-success)', marginTop: 4 }}
+                    >
+                      {t('billing.saveAmount', {
+                        amount: savedAmount.toFixed(2),
+                        currency: option.currency,
+                      })}
+                    </div>
+                  ) : null}
+                  <Button
+                    variant={yearly ? 'primary' : 'default'}
+                    icon="credit-card"
+                    style={{ marginTop: 12, width: '100%' }}
+                    onClick={() => void pay(option.code)}
+                    disabled={!data.configured || paying !== null || Boolean(pending)}
+                  >
+                    {paying === option.code ? t('common.loading') : t('billing.pay')}
+                  </Button>
+                </div>
+              );
+            })}
+          </div>
 
           {pending ? (
             <div className="alert info" style={{ marginTop: 12 }}>
@@ -145,17 +200,10 @@ export function BillingPage() {
             </div>
           ) : null}
 
-          <div className="row" style={{ marginTop: 14 }}>
-            <Button
-              variant="primary"
-              icon="credit-card"
-              onClick={() => void pay()}
-              disabled={!data.configured || paying || Boolean(pending)}
-            >
-              {paying ? t('common.loading') : t('billing.pay')}
-            </Button>
-          </div>
-          <p className="caption subtle" style={{ marginTop: 8 }}>
+          <p className="caption subtle" style={{ marginTop: 10 }}>
+            {t('billing.extendHint')}
+          </p>
+          <p className="caption subtle" style={{ marginTop: 6 }}>
             {t('billing.payHint')}
           </p>
         </section>
@@ -176,6 +224,9 @@ export function BillingPage() {
                   </div>
                   <div className="caption subtle">
                     {formatDateTime(payment.created_at, i18n.language)}
+                    {payment.period_days
+                      ? ` · ${t('billing.daysShort', { days: payment.period_days })}`
+                      : ''}
                     {payment.paid_at
                       ? ` · ${t('billing.paidAt')} ${formatDateTime(payment.paid_at, i18n.language)}`
                       : ''}
